@@ -17,7 +17,7 @@ class Session {
 
     public void sendMessage(PrintWriter printWriter, byte[] message) throws UnsupportedEncodingException {
         sendMessage(printWriter, new String(message, StandardCharsets.UTF_8));
-        System.out.println("Send: " + message + "encoded as UTF-8");
+        System.out.println("Send: " + message + " encoded as UTF-8");
     }
 
     public void sendMessage(PrintWriter printWriter, String message) throws UnsupportedEncodingException {
