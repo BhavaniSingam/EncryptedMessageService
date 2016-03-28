@@ -12,7 +12,6 @@ import java.security.NoSuchAlgorithmException;
  * AES class contains static methods to generate asymmetric key, encrypt and decrypt data.
  * @author Michael Kyeyune
  * @since 2016-03-28
- * Created by Michael on 2016/03/28.
  */
 
 public class AES {
