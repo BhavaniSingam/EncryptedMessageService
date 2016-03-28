@@ -13,3 +13,7 @@ hs_err_pid*
 
 # Intellij IDE specific files
 .idea
+*.iml
+
+EncryptedChatClient.java
+EncryptedChatServer.java
