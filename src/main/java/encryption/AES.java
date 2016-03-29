@@ -6,6 +6,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 /**
  * <h1>AES Encryption</h1>
@@ -33,6 +34,19 @@ public class AES {
         } finally {
             return key;
         }
+    }
+
+    /**
+     * This method generates the Initialisation Vector to be used in AES
+     * @param keySize The size of the key to be used.
+     * @return byte[] The Initialization Vector
+     */
+    public static byte[] generateIV(int keySize)
+    {
+        byte[] iv = new byte[keySize/8];
+        SecureRandom prng = new SecureRandom();
+        prng.nextBytes(iv);
+        return iv;
     }
 
     /**

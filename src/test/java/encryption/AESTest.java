@@ -27,13 +27,11 @@ public class AESTest
 
         int keySize = 128;
 
-        Key key = AES.generateKey(128);
+        Key key = AES.generateKey(keySize);
         assertNotNull(key);
 
         //generate bytes for the initialization vector
-        byte[] iv = new byte[keySize/8];
-        SecureRandom prng = new SecureRandom();
-        prng.nextBytes(iv);
+        byte[] iv = AES.generateIV(keySize);
 
         //specify transformation and carry out encryption
         String transformation = "AES/CBC/PKCS5Padding";
