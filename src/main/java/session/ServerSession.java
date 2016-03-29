@@ -1,4 +1,4 @@
-package encryption;
+package session;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -6,10 +6,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import java.security.interfaces.RSAPublicKey;
 
 /**
  * Contains functionality to accepts a connections from the client
@@ -74,5 +71,13 @@ public class ServerSession extends Session {
 
     public byte[] pollForMessage() throws IOException, InterruptedException {
         return pollForMessage(inputReader);
+    }
+
+    public void sendRSAPublicKey(RSAPublicKey publicKey) throws IOException {
+        sendRSAPublicKey(publicKey, socket);
+    }
+
+    public RSAPublicKey retrieveRSAPublicKey() throws IOException, ClassNotFoundException {
+        return retrieveRSAPublicKey(socket);
     }
 }

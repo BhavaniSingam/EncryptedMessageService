@@ -1,10 +1,11 @@
-package encryption;
+package session;
 
 import java.io.*;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -17,7 +18,9 @@ import static java.lang.Thread.sleep;
  */
 class Session {
     protected static final int PORT = 8888;
-    protected static final String AES_TRANSFORMATION = "AES/CBC/PKCS7PADDING";
+    protected static final String AES_TRANSFORMATION = "AES/CBC/PKCS5Padding";
+    protected static final String RSA_TRANSFORMATION = "RSA/ECB/PKCS1Padding";
+    protected static final String SIGNATURE_TRANSFORMATION = "SHA1WithRSA";
     protected static final int SLEEP_TIME = 500;
     private BufferedReader systemInputReader;
 
@@ -100,6 +103,18 @@ class Session {
         } while(usedNonces.contains(nonce));
         usedNonces.add(nonce);
         return nonce;
+    }
+
+    public RSAPublicKey retrieveRSAPublicKey(Socket socket) throws IOException, ClassNotFoundException {
+        ObjectInputStream objInS = new ObjectInputStream(socket.getInputStream());
+        RSAPublicKey key = (RSAPublicKey) objInS.readObject();
+        return key;
+    }
+
+    public void sendRSAPublicKey(RSAPublicKey publicKey, Socket socket) throws IOException {
+        ObjectOutputStream objOutS = new ObjectOutputStream(socket.getOutputStream());
+        objOutS.writeObject(publicKey);
+        objOutS.flush();
     }
 
 

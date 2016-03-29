@@ -43,8 +43,13 @@ public class AES {
      */
     public static byte[] generateIV(int keySize)
     {
-        byte[] iv = new byte[keySize/8];
         SecureRandom prng = new SecureRandom();
+        return generateIV(prng, keySize);
+    }
+
+    public static byte[] generateIV(SecureRandom prng, int keySize)
+    {
+        byte[] iv = new byte[keySize/8];
         prng.nextBytes(iv);
         return iv;
     }
@@ -96,7 +101,9 @@ public class AES {
             e.printStackTrace();
         } catch (NoSuchPaddingException e) {
             e.printStackTrace();
-        } finally {
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally{
             return modifiedData;
         }
     }
