@@ -8,6 +8,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 /**
@@ -19,6 +20,7 @@ public class ServerSession extends Session {
     private ServerSocket serversocket;
     private Socket socket;
     private BufferedReader inputReader;
+    private PrintWriter printWriter;
 
     /**
      * Constructs a default ServerSession with the default port
@@ -36,24 +38,6 @@ public class ServerSession extends Session {
         serversocket = new ServerSocket(port);
     }
 
-    public byte[][] fetchMessages() throws IOException {
-        String input;
-        List<byte[]> messages = new ArrayList<>();
-
-        while (inputReader.ready() && (input = inputReader.readLine()) != null) {
-            messages.add(input.getBytes(StandardCharsets.UTF_8));
-            System.out.println("Received encrypted message encoded as UTF-8: " + input);
-            System.out.println("Received Byte array: " + input.getBytes(StandardCharsets.UTF_8));
-        }
-
-        byte[][] messageByteArray = new byte[messages.size()][];
-        for(int i = 0; i < messageByteArray.length; ++i) {
-            messageByteArray[i] = messages.get(i);
-        }
-
-        return messageByteArray;
-    }
-
     /**
      * Wait indefinitely until a client connects to the socket
      * @throws IOException
@@ -61,8 +45,34 @@ public class ServerSession extends Session {
     public void waitForConnection() throws IOException {
         System.out.println("Listening at 127.0.0.1 on port " + serversocket.getLocalPort());
         socket = serversocket.accept();
+        printWriter = new PrintWriter(socket.getOutputStream(),true);
         InputStreamReader inputstreamreader = new InputStreamReader(socket.getInputStream());
         inputReader = new BufferedReader(inputstreamreader);
         System.out.println("Connected to ClientSession.");
+    }
+
+    /**
+     * Sense a message using the socket created
+     * @param message the byte array message to send
+     *
+     */
+    public void sendMessage(byte[] message)  {
+        sendMessage(printWriter, message);
+    }
+
+    public void sendMessage(String message) {
+        sendMessage(printWriter, message);
+    }
+
+    public byte[] fetchMessage() throws IOException {
+        return fetchMessage(inputReader);
+    }
+
+    public byte[][] fetchMessages() throws IOException {
+        return fetchMessages(inputReader);
+    }
+
+    public byte[] pollForMessage() throws IOException, InterruptedException {
+        return pollForMessage(inputReader);
     }
 }
