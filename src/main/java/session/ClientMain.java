@@ -91,7 +91,9 @@ public class ClientMain {
 
             byte[] concatenatedSignatureAndMessage = outputStream.toByteArray();
             System.out.println("concatenatedSignatureAndMessage: " + Base64.getEncoder().encodeToString(concatenatedSignatureAndMessage));
+            System.out.println("Regular length: " + concatenatedSignatureAndMessage.length);
             byte[] zippedMessage = ZIP.compress(concatenatedSignatureAndMessage);
+            System.out.println("ZIP length: " + zippedMessage.length);
             System.out.println("zippedMessage: " + Base64.getEncoder().encodeToString(zippedMessage));
 
             byte[] encryptedMessage = AES.encrypt(zippedMessage, AESKey, AES_TRANSFORMATION, iv);
