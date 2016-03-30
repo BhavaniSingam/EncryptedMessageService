@@ -1,9 +1,9 @@
 package zipping;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
-import java.util.zip.Inflater;
+import java.io.IOException;
+import java.util.zip.*;
 
 /**
  * <h1>ZIP</h1>
@@ -20,20 +20,37 @@ public class ZIP
      */
     public static byte[] compress(byte[] data)
     {
-        ByteArrayOutputStream out = new ByteArrayOutputStream(data.length);
+        ByteArrayInputStream bais = new ByteArrayInputStream(data);
 
-        Deflater deflater = new Deflater();
-        deflater.setInput(data);
-        deflater.finish();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ZipOutputStream zos = new ZipOutputStream(baos);
+        ZipEntry entry = new ZipEntry("temp.zip");
+        entry.setSize(data.length);
 
-        byte[] buffer = new byte[1024];
+        try {
+            zos.putNextEntry(entry);
 
-        while(!deflater.finished())
+            byte[] buffer = new byte[1024];
+
+            int len;
+
+            while((len = bais.read(buffer)) > 0)
+            {
+                zos.write(buffer, 0, len);
+            }
+
+            zos.closeEntry();
+            bais.close();
+            zos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        finally
         {
-            out.write(buffer, 0, deflater.deflate(buffer));
+            return baos.toByteArray();
         }
 
-        return out.toByteArray();
+
     }
 
     /**
@@ -43,25 +60,31 @@ public class ZIP
      */
     public static byte[] decompress(byte[] compressedData)
     {
-        Inflater inflater = new Inflater();
-        inflater.setInput(compressedData);
+        ByteArrayInputStream bais = new ByteArrayInputStream(compressedData);
+        ZipInputStream zis = new ZipInputStream(bais);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream(compressedData.length);
-        byte[] buffer = new byte[1024];
+        try {
+            zis.getNextEntry();
+            byte[] buffer = new byte[1024];
 
-        try
-        {
-            while(!inflater.finished())
+            int len;
+            while((len = zis.read(buffer)) > 0)
             {
-                out.write(buffer, 0, inflater.inflate(buffer));
+                baos.write(buffer, 0, len);
             }
-            return out.toByteArray();
+            baos.close();
+            zis.getNextEntry();
+            zis.closeEntry();
+            zis.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        catch(DataFormatException ex)
+        finally
         {
-            ex.printStackTrace();
-            //return data uncompressed
-            return compressedData;
+            return baos.toByteArray();
         }
+
     }
 }
