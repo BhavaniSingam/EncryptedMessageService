@@ -3,6 +3,7 @@ package zipping;
 import org.junit.Test;
 
 import java.io.UnsupportedEncodingException;
+import java.security.SecureRandom;
 
 import static org.junit.Assert.assertTrue;
 
@@ -38,5 +39,20 @@ public class ZIPTest
         //check that text generated from decompression is still the same as the original
         String uncompressedDataText = new String(uncompressedData, "UTF8");
         assertTrue(text.equals(uncompressedDataText));
+    }
+
+    @Test
+    public void testZippingRandom()
+    {
+        byte[] data = new byte[277];
+
+        SecureRandom prng = new SecureRandom();
+        prng.nextBytes(data);
+
+        byte[] compressedData = ZIP.compress(data);
+        assertTrue(compressedData.length < data.length);
+
+        byte[] uncompressedData = ZIP.decompress(compressedData);
+        assertTrue(data.length == uncompressedData.length);
     }
 }
