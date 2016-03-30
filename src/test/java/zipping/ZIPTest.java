@@ -4,6 +4,8 @@ import org.junit.Test;
 
 import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Base64;
 
 import static org.junit.Assert.assertTrue;
 
@@ -54,5 +56,52 @@ public class ZIPTest
 
         byte[] uncompressedData = ZIP.decompress(compressedData);
         assertTrue(data.length == uncompressedData.length);
+    }
+
+    @Test
+    public void testZippingRandomText() throws UnsupportedEncodingException
+    {
+        byte[] data = new byte[277];
+
+        SecureRandom prng = new SecureRandom();
+        prng.nextBytes(data);
+
+        String sampleText = new String(data, "UTF8");
+        byte[] sampleTextData = sampleText.getBytes("UTF8");
+
+        byte[] compressedData = ZIP.compress(sampleTextData);
+        assertTrue(compressedData.length < sampleTextData.length);
+
+        byte[] uncompressedData = ZIP.decompress(compressedData);
+        assertTrue(sampleTextData.length == uncompressedData.length);
+    }
+
+    @Test
+    public void testZippingRandomTextBase64()
+    {
+        byte[] data = new byte[277];
+        SecureRandom prng = new SecureRandom();
+        prng.nextBytes(data);
+
+        byte[] encodedBytes = Base64.getEncoder().encode(data);
+
+        byte[] compressedData = ZIP.compress(encodedBytes);
+        assertTrue(compressedData.length < encodedBytes.length);
+    }
+
+    @Test
+    public void testZippingRandomTextBase64ToString() throws UnsupportedEncodingException
+    {
+        byte[] data = new byte[277];
+        SecureRandom prng = new SecureRandom();
+        prng.nextBytes(data);
+
+        String encodedString = Base64.getEncoder().encodeToString(data);
+        System.out.println(encodedString);
+        byte[] encodedStringBytes = encodedString.getBytes("UTF8");
+
+        byte[] compressedData = ZIP.compress(encodedStringBytes);
+        assertTrue(compressedData.length < encodedStringBytes.length);
+
     }
 }

@@ -25,7 +25,7 @@ public class ZIP
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ZipOutputStream zos = new ZipOutputStream(baos);
-        ZipEntry entry = new ZipEntry("temp.log");
+        ZipEntry entry = new ZipEntry("data");
         entry.setSize(data.length);
 
         try {
