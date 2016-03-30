@@ -13,6 +13,7 @@ import java.util.zip.*;
  */
 public class ZIP
 {
+    private static final int BUFFER_SIZE = 1024;
     /**
      * A method to compress provided byte array
      * @param data The data to be compressed
@@ -24,13 +25,13 @@ public class ZIP
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ZipOutputStream zos = new ZipOutputStream(baos);
-        ZipEntry entry = new ZipEntry("temp.zip");
+        ZipEntry entry = new ZipEntry("temp.log");
         entry.setSize(data.length);
 
         try {
             zos.putNextEntry(entry);
 
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[BUFFER_SIZE];
 
             int len;
 
@@ -66,7 +67,7 @@ public class ZIP
 
         try {
             zis.getNextEntry();
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[BUFFER_SIZE];
 
             int len;
             while((len = zis.read(buffer)) > 0)
