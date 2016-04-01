@@ -17,3 +17,6 @@ hs_err_pid*
 
 EncryptedChatClient.java
 EncryptedChatServer.java
+
+# Folder containing RSA keys at run time
+target/classes/keys
