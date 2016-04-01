@@ -3,6 +3,8 @@ package session;
 import encryption.AES;
 import encryption.RSA;
 import signature.DigitalSignature;
+import storage.STORE;
+import storage.StoreKeys;
 import zipping.ZIP;
 
 import javax.crypto.spec.SecretKeySpec;
@@ -20,7 +22,6 @@ import static java.lang.Thread.sleep;
 import static session.Session.*;
 
 public class ServerMain {
-    private static final int RSA_KEY_LENGTH = 2048;
     public static void main(String[] args) {
         try {
             ServerSession serverSession = new ServerSession();
@@ -29,13 +30,12 @@ public class ServerMain {
             Set<BigInteger> usedNonces = new HashSet<>();
 
             // ========== RSA key exchange ==========
-            // Generate 2048 bit RSA key pair
-            KeyPair serverKeyPair = RSA.generateKeyPair(RSA_KEY_LENGTH);
-            RSAPublicKey serverPublicKey = (RSAPublicKey) serverKeyPair.getPublic();
-            RSAPrivateKey serverPrivateKey = (RSAPrivateKey) serverKeyPair.getPrivate();
+            // Read 2048 bit RSA keys from file
+            RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.SERVER_PUBLIC_KEY_FILE_NAME);
+            RSAPrivateKey serverPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.SERVER_PRIVATE_KEY_FILE_NAME);
 
             // Send public key to server
-            serverSession.sendRSAPublicKey((RSAPublicKey) serverKeyPair.getPublic());
+            serverSession.sendRSAPublicKey(serverPublicKey);
 
             // Retrieve server public key
             RSAPublicKey clientPublicKey = serverSession.retrieveRSAPublicKey();
