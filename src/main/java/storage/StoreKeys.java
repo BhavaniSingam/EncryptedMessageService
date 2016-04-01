@@ -12,8 +12,8 @@ import java.security.KeyPair;
  */
 public class StoreKeys
 {
-    private static final String CLIENT_KEYS_FOLDER = "src/main/resources/keys/client/";
-    private static final String SERVER_KEYS_FOLDER = "src/main/resources/keys/server/";
+    public static final String CLIENT_KEYS_FOLDER = "src/main/resources/keys/client/";
+    public static final String SERVER_KEYS_FOLDER = "src/main/resources/keys/server/";
 
     public static void main(String[] args)
     {
