@@ -34,8 +34,8 @@ class Session {
      * @param message a byte array
      */
     public void sendMessage(PrintWriter printWriter, byte[] message) {
-        sendMessage(printWriter, Base64.getEncoder().encodeToString(message));
-        System.out.println("Send: " + message + " encoded as Base 64");
+        String sendMessage = Base64.getEncoder().encodeToString(message);
+        sendMessage(printWriter, sendMessage);
     }
 
     /**
@@ -45,7 +45,7 @@ class Session {
      */
     public void sendMessage(PrintWriter printWriter, String message) {
         printWriter.println(message);
-        System.out.println("Send message: " + message);
+        System.out.println("Send message (Base64): " + message);
     }
 
     public String captureUserInput() throws IOException {

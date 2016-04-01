@@ -32,7 +32,6 @@ public class ServerMain {
             // Generate 2048 bit RSA key pair
             KeyPair serverKeyPair = RSA.generateKeyPair(RSA_KEY_LENGTH);
             RSAPublicKey serverPublicKey = (RSAPublicKey) serverKeyPair.getPublic();
-            System.out.println("serverPublicKey: " + serverPublicKey);
             RSAPrivateKey serverPrivateKey = (RSAPrivateKey) serverKeyPair.getPrivate();
 
             // Send public key to server
@@ -41,57 +40,61 @@ public class ServerMain {
             // Retrieve server public key
             RSAPublicKey clientPublicKey = serverSession.retrieveRSAPublicKey();
 
-            // Fetch the message from the client
+            // ========== Fetch the message from the client ==========
             byte[] receivedMessage = serverSession.pollForMessage();
-            System.out.println("Public key length: " + serverPublicKey.getModulus().bitLength()/8);
-            byte[] encryptedKey = Arrays.copyOfRange(receivedMessage, 0, serverPublicKey.getModulus().bitLength()/8);
+            int encryptedAESKeyLength = serverPublicKey.getModulus().bitLength()/8;
+            byte[] encryptedKey = Arrays.copyOfRange(receivedMessage, 0, encryptedAESKeyLength);
             byte[] AESKeyByteArray = RSA.decrypt(encryptedKey, serverPrivateKey, RSA_TRANSFORMATION);
-            System.out.println("receivedMessage: " +Base64.getEncoder().encodeToString(receivedMessage));
-            System.out.println("encryptedKey: " + Base64.getEncoder().encodeToString(encryptedKey));
-            System.out.println("AESKeyByteArray: " + Base64.getEncoder().encodeToString(AESKeyByteArray));
+            System.out.println("Received message (Base64): " +Base64.getEncoder().encodeToString(receivedMessage));
+            System.out.println("Encrypted AES key (Base64): " + Base64.getEncoder().encodeToString(encryptedKey));
+            System.out.println("AES key (Base64): " + Base64.getEncoder().encodeToString(AESKeyByteArray));
             Key AESKey = new SecretKeySpec(AESKeyByteArray, 0, AESKeyByteArray.length, "AES");
-            System.out.println("Received AES key: " + AESKey.toString());
 
-            // Get the number of bits in the
-            int AESKeyBitsStartIndex = serverPublicKey.getModulus().bitLength()/8;
-            ByteBuffer byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(receivedMessage, AESKeyBitsStartIndex, AESKeyBitsStartIndex + 4));
-            int AESKeyBits = byteBuffer.getInt();
-            System.out.println("AESKeyBits: " + AESKeyBits);
-            System.out.println("AESKey: " + Base64.getEncoder().encodeToString(AESKey.getEncoded()));
+            // ========== Salt length ==========
+            ByteBuffer byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(receivedMessage, encryptedAESKeyLength, encryptedAESKeyLength + 4));
+            int ivNumberOfBytes = byteBuffer.getInt();
+            System.out.println("Number of bits in the random salt (IV): " + ivNumberOfBytes*8);
 
-            int IVStartIndex = AESKeyBitsStartIndex + 4;
-            byte[] iv = Arrays.copyOfRange(receivedMessage, IVStartIndex, IVStartIndex + AESKeyBits);
-            System.out.println("iv: " +Base64.getEncoder().encodeToString(iv));
+            // ========== Random Salt ==========
+            int IVStartIndex = encryptedAESKeyLength + 4;
+            byte[] iv = Arrays.copyOfRange(receivedMessage, IVStartIndex, IVStartIndex + ivNumberOfBytes);
+            System.out.println("Random salt (Base64): " + Base64.getEncoder().encodeToString(iv));
 
-            int encryptedDataStartIndex = IVStartIndex + AESKeyBits;
+            // ========== Encrypted data ==========
+            int encryptedDataStartIndex = IVStartIndex + ivNumberOfBytes;
             byte[] encryptedData = Arrays.copyOfRange(receivedMessage, encryptedDataStartIndex, receivedMessage.length);
-            System.out.println("encryptedData: " +Base64.getEncoder().encodeToString(encryptedData));
+            System.out.println("Encrypted data (Base64): " +Base64.getEncoder().encodeToString(encryptedData));
 
+            // ========== Decrypt message ==========
             byte[] unencryptedData = AES.decrypt(encryptedData, AESKey, AES_TRANSFORMATION, iv);
-            System.out.println("unencryptedData: " +Base64.getEncoder().encodeToString(unencryptedData));
-            byte[] unzipedData = ZIP.decompress(unencryptedData);
-            System.out.println("unzipedData: " +Base64.getEncoder().encodeToString(unzipedData));
+            System.out.println("Unencrypted Data (Base64): " +Base64.getEncoder().encodeToString(unencryptedData));
+            byte[] unzippedData = ZIP.decompress(unencryptedData);
+            System.out.println("Unzipped Data (Base64): " +Base64.getEncoder().encodeToString(unzippedData));
 
-            byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(unzipedData, 0, 4));
+            // ========== Signature length ==========
+            byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(unzippedData, 0, 4));
             int signatureLength = byteBuffer.getInt();
+            System.out.println("Signature length: " + signatureLength);
 
-            System.out.println("signatureLength: " + signatureLength);
-            byte[] signature = Arrays.copyOfRange(unzipedData, 4, 4 + signatureLength);
-
-            byte[] messageSection = Arrays.copyOfRange(unzipedData, 4 + signatureLength, unzipedData.length);
+            // ========== Signature and verification ==========
+            byte[] signature = Arrays.copyOfRange(unzippedData, 4, 4 + signatureLength);
+            byte[] messageSection = Arrays.copyOfRange(unzippedData, 4 + signatureLength, unzippedData.length);
             if(!DigitalSignature.verifySignature(messageSection, signature, clientPublicKey, SIGNATURE_TRANSFORMATION)) {
                 System.out.println("Signature does not match, ignoring message");
                 // TODO: do something more sensical here
                 return;
             }
 
+            // ========== Nonce ==========
             byte[] nonce = Arrays.copyOfRange(messageSection, 0, 8);
-            System.out.println("nonce: " +Base64.getEncoder().encodeToString(nonce));
+            System.out.println("Nonce (Base64): " +Base64.getEncoder().encodeToString(nonce));
 
-            // This should be 0 in this case
+            // ========== Message ==========
             byte[] messageContents = Arrays.copyOfRange(messageSection, 8, messageSection.length);
-            System.out.println(new String(messageContents, "UTF8"));
+            System.out.println("Message: " + new String(messageContents, "UTF8"));
 
+            // TODO: Add this process for all newly received messages
+            // TODO: Allow one to send messages back to the client
             while(true) {
                 byte[][] messages = serverSession.fetchMessages();
                 for(byte[] message : messages) {

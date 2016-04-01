@@ -49,44 +49,38 @@ public class ClientMain {
             // ========== AES key exchange ==========
             // Generate AES key
             Key AESKey = AES.generateKey(AES_KEY_LENGTH);
-            System.out.println("Generated AES Key length: " + AESKey.getEncoded().length);
-            System.out.println("AESKey: " + Base64.getEncoder().encodeToString(AESKey.getEncoded()));
+            System.out.println("Generated an AES key of " + AESKey.getEncoded().length * 8 + " bits");
+            System.out.println("AES key (visualised as a base64 string): " + Base64.getEncoder().encodeToString(AESKey.getEncoded()));
 
-            // TODO: The Key is still in plaintext, it should be encrypted with the public key of server
             // Encrypt the AES key
-            System.out.println("serverPublicKey: " + serverPublicKey);
             byte[] encryptedKey = RSA.encrypt(AESKey.getEncoded(), serverPublicKey, RSA_TRANSFORMATION);
-            System.out.println("Encrypted AES key length: " + encryptedKey.length);
+            System.out.println("Encrypted AES key with server public key, length of encrypted key is " + encryptedKey.length*8 + " bits");
+            System.out.println("Encrypted AES key (Base64): " + Base64.getEncoder().encodeToString(encryptedKey));
 
             // Generate random salt - this can be sent as plaintext
             byte[] iv = AES.generateIV(AES_KEY_LENGTH);
-            System.out.println("ivByteArray: " + Base64.getEncoder().encodeToString(iv));
+            System.out.println("Random salt generated (visualised as a base64 string): " + Base64.getEncoder().encodeToString(iv));
 
             // Encrypt the nonce
             byte[] nonce = AES.generateIV(IVSecureRandom, 64);
-            System.out.println("nonceByteArray length: " + nonce.length);
-            System.out.println("nonce: " + Base64.getEncoder().encodeToString(nonce));
+            System.out.println("64 bit nonce generated (visualised as base64): " + Base64.getEncoder().encodeToString(nonce));
 
-            // Hello message
-            String text = "Lorem ipsum dolor sit amet, consectetur adipisicing elit, " +
-                    "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. " +
-                    "Ut enim ad minim veniam, quis nostrud exercitation ullamco " +
-                    "laboris nisi ut aliquip ex ea commodo consequat. " +
-                    "Duis aute irure dolor in reprehenderit in voluptate velit esse " +
-                    "cillum dolore eu fugiat nulla pariatur. " +
-                    "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui " +
-                    "officia deserunt mollit anim id est laborum.";
+            // ========== Hello Message ==========
+            String text = "PGP Hello";
             byte[] clientMessage = text.getBytes("UTF8");
+            System.out.println("Sending an initial hello message: " + text);
 
-            // Message contents
+            // ========== Message contents ==========
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             outputStream.write(nonce);
             outputStream.write(clientMessage);
             byte[] messageContents =outputStream.toByteArray();
+            System.out.println("Message contents (Nonce and message), visualised as base64 string: " + Base64.getEncoder().encodeToString(messageContents));
 
-            // Signature
+            // ========== Signature ==========
             byte[] signature = DigitalSignature.generateSignature(messageContents, clientPrivateKey, SIGNATURE_TRANSFORMATION);
-            System.out.println("Signature length: " + signature.length);
+            System.out.println("Signature has " + signature.length + " bits");
+            System.out.println("Signature (visualised as base64 String): " + Base64.getEncoder().encodeToString(signature));
 
             // ========== Concatenate signature and message ==========
             outputStream.reset();
@@ -98,21 +92,20 @@ public class ClientMain {
             outputStream.write(messageContents);
 
             byte[] concatenatedSignatureAndMessage = outputStream.toByteArray();
-            System.out.println("concatenatedSignatureAndMessage: " + Base64.getEncoder().encodeToString(concatenatedSignatureAndMessage));
-            System.out.println("Regular length: " + concatenatedSignatureAndMessage.length);
+            System.out.println("Concatenated signature and message (Base64): " + Base64.getEncoder().encodeToString(concatenatedSignatureAndMessage));
+            System.out.println("Before zipping length: " + concatenatedSignatureAndMessage.length);
             byte[] zippedMessage = ZIP.compress(concatenatedSignatureAndMessage);
-            System.out.println("ZIP length: " + zippedMessage.length);
-            System.out.println("zippedMessage: " + Base64.getEncoder().encodeToString(zippedMessage));
+            System.out.println("After zipping length: " + zippedMessage.length);
+            System.out.println("Zipped message (Base64): " + Base64.getEncoder().encodeToString(zippedMessage));
 
             byte[] encryptedMessage = AES.encrypt(zippedMessage, AESKey, AES_TRANSFORMATION, iv);
-            System.out.println("encryptedMessage: " + Base64.getEncoder().encodeToString(encryptedMessage));
+            System.out.println("Encrypted message (Base64): " + Base64.getEncoder().encodeToString(encryptedMessage));
 
+            // ========== Final message construction ==========
             outputStream.reset();
-            System.out.println("Encrypted Key:" + Base64.getEncoder().encodeToString(encryptedKey));
 
             byteBuffer = ByteBuffer.allocate(4);
             byteBuffer.putInt(iv.length);
-            System.out.println("ByteBuffer: " + byteBuffer.array().length);
 
             outputStream.write(encryptedKey);
             outputStream.write(byteBuffer.array());
@@ -122,6 +115,9 @@ public class ClientMain {
 
             clientSession.sendMessage(output);
 
+            // TODO: Add this process for all newly sent messages
+            // TODO: Allow one to receive messages back from the server
+            // ========== Message sending and receiving ==========
             byte[] receivedMessage = clientSession.pollForMessage();
 
             while(true) {
