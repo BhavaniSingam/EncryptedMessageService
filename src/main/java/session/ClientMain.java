@@ -4,6 +4,8 @@ package session;
 import encryption.AES;
 import encryption.RSA;
 import signature.DigitalSignature;
+import storage.STORE;
+import storage.StoreKeys;
 import zipping.ZIP;
 
 import java.io.ByteArrayOutputStream;
@@ -24,7 +26,6 @@ import static session.Session.SIGNATURE_TRANSFORMATION;
 
 public class ClientMain {
     private static final int AES_KEY_LENGTH = 128;
-    private static final int RSA_KEY_LENGTH = 2048;
 
     public static void main(String[] args) {
         try {
@@ -35,13 +36,12 @@ public class ClientMain {
             SecureRandom IVSecureRandom = new SecureRandom();
 
             // ========== RSA key exchange ==========
-            // Generate 2048 bit RSA key pair
-            KeyPair clientKeyPair = RSA.generateKeyPair(RSA_KEY_LENGTH);
-            RSAPublicKey clientPublicKey = (RSAPublicKey) clientKeyPair.getPublic();
-            RSAPrivateKey clientPrivateKey = (RSAPrivateKey) clientKeyPair.getPrivate();
+            // Read 2048 bit keys from storage
+            RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.CLIENT_PUBLIC_KEY_FILE_NAME);
+            RSAPrivateKey clientPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.CLIENT_PRIVATE_KEY_FILE_NAME);
 
             // Send public key to server
-            clientSession.sendRSAPublicKey((RSAPublicKey) clientKeyPair.getPublic());
+            clientSession.sendRSAPublicKey(clientPublicKey);
 
             // Retrieve server public key
             RSAPublicKey serverPublicKey = clientSession.retrieveRSAPublicKey();
