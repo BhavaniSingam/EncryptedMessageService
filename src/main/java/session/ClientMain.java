@@ -40,11 +40,8 @@ public class ClientMain {
             RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.CLIENT_PUBLIC_KEY_FILE_NAME);
             RSAPrivateKey clientPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.CLIENT_PRIVATE_KEY_FILE_NAME);
 
-            // Send public key to server
-            clientSession.sendRSAPublicKey(clientPublicKey);
-
-            // Retrieve server public key
-            RSAPublicKey serverPublicKey = clientSession.retrieveRSAPublicKey();
+            // Read server public key from file
+            RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.SERVER_PUBLIC_KEY_FILE_NAME);
 
             // ========== AES key exchange ==========
             // Generate AES key
@@ -129,8 +126,6 @@ public class ClientMain {
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
     }

@@ -34,11 +34,8 @@ public class ServerMain {
             RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.SERVER_PUBLIC_KEY_FILE_NAME);
             RSAPrivateKey serverPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.SERVER_PRIVATE_KEY_FILE_NAME);
 
-            // Send public key to server
-            serverSession.sendRSAPublicKey(serverPublicKey);
-
             // Retrieve server public key
-            RSAPublicKey clientPublicKey = serverSession.retrieveRSAPublicKey();
+            RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.CLIENT_PUBLIC_KEY_FILE_NAME);
 
             // ========== Fetch the message from the client ==========
             byte[] receivedMessage = serverSession.pollForMessage();
@@ -105,8 +102,6 @@ public class ServerMain {
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
