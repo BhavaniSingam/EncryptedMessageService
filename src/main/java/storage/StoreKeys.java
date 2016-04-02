@@ -15,12 +15,6 @@ public class StoreKeys
     public static final String CLIENT_KEYS_FOLDER = "src/main/resources/keys/client/";
     public static final String SERVER_KEYS_FOLDER = "src/main/resources/keys/server/";
 
-    public static final String CLIENT_PUBLIC_KEY_FILE_NAME = "client-public.store";
-    public static final String CLIENT_PRIVATE_KEY_FILE_NAME = "client-private.store";
-
-    public static final String SERVER_PUBLIC_KEY_FILE_NAME = "server-public.store";
-    public static final String SERVER_PRIVATE_KEY_FILE_NAME = "server-private.store";
-
     public static final String PUBLIC_KEY_RING_FILE_NAME = "public-key-ring.csv";
     public static final String PRIVATE_KEY_RING_FILE_NAME = "private-key-ring.csv";
 
