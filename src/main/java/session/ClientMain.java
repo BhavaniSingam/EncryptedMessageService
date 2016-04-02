@@ -1,6 +1,5 @@
 package session;
 
-
 import encryption.AES;
 import encryption.RSA;
 import signature.DigitalSignature;
@@ -10,20 +9,22 @@ import zipping.ZIP;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.security.*;
+import java.security.Key;
+import java.security.SecureRandom;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.util.*;
+import java.util.Base64;
+import java.util.HashSet;
+import java.util.Set;
 
-import static java.lang.Thread.sleep;
-import static session.Session.AES_TRANSFORMATION;
-import static session.Session.RSA_TRANSFORMATION;
-import static session.Session.SIGNATURE_TRANSFORMATION;
+import static session.Session.*;
 
+/**
+ * Contains main for the client
+ *
+ * @author Brian Mc George
+ */
 public class ClientMain {
     private static final int AES_KEY_LENGTH = 128;
 
@@ -31,14 +32,15 @@ public class ClientMain {
         try {
 
             ClientSession clientSession = new ClientSession();
-            Set<BigInteger> usedNonces = new HashSet<>();
-            SecureRandom secureRandom = new SecureRandom();
+            Set<String> usedNonces = new HashSet<>();
             SecureRandom IVSecureRandom = new SecureRandom();
+            SecureRandom saltSecureRandom = new SecureRandom();
 
             // ========== RSA key exchange ==========
             // Read 2048 bit keys from storage
             RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.CLIENT_PUBLIC_KEY_FILE_NAME);
-            RSAPrivateKey clientPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.CLIENT_PRIVATE_KEY_FILE_NAME);
+            RSAPrivateKey clientPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys
+                    .CLIENT_PRIVATE_KEY_FILE_NAME);
 
             // Read server public key from file
             RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.SERVER_PUBLIC_KEY_FILE_NAME);
@@ -51,16 +53,22 @@ public class ClientMain {
 
             // Encrypt the AES key
             byte[] encryptedKey = RSA.encrypt(AESKey.getEncoded(), serverPublicKey, RSA_TRANSFORMATION);
-            System.out.println("Encrypted AES key with server public key, length of encrypted key is " + encryptedKey.length*8 + " bits");
+            System.out.println("Encrypted AES key with server public key, length of encrypted key is " + encryptedKey.length * 8 + " bits");
             System.out.println("Encrypted AES key (Base64): " + Base64.getEncoder().encodeToString(encryptedKey));
 
             // Generate random salt - this can be sent as plaintext
-            byte[] iv = AES.generateIV(AES_KEY_LENGTH);
+            byte[] iv = AES.generateIV(saltSecureRandom, AES_KEY_LENGTH);
             System.out.println("Random salt generated (visualised as a base64 string): " + Base64.getEncoder().encodeToString(iv));
 
-            // Encrypt the nonce
-            byte[] nonce = AES.generateIV(IVSecureRandom, 64);
-            System.out.println("64 bit nonce generated (visualised as base64): " + Base64.getEncoder().encodeToString(nonce));
+            // Generate a nonce
+            byte[] nonce;
+            String nonceTxt;
+            do {
+                nonce = AES.generateIV(IVSecureRandom, 64);
+                nonceTxt = Base64.getEncoder().encodeToString(nonce);
+            } while (usedNonces.contains(nonceTxt));
+            usedNonces.add(nonceTxt);
+            System.out.println("64 bit nonce generated (visualised as base64): " + nonceTxt);
 
             // ========== Hello Message ==========
             String text = "PGP Hello";
@@ -71,7 +79,7 @@ public class ClientMain {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             outputStream.write(nonce);
             outputStream.write(clientMessage);
-            byte[] messageContents =outputStream.toByteArray();
+            byte[] messageContents = outputStream.toByteArray();
             System.out.println("Message contents (Nonce and message), visualised as base64 string: " + Base64.getEncoder().encodeToString(messageContents));
 
             // ========== Signature ==========
@@ -101,6 +109,7 @@ public class ClientMain {
             // ========== Final message construction ==========
             outputStream.reset();
 
+            // Include the length of the salt
             byteBuffer = ByteBuffer.allocate(4);
             byteBuffer.putInt(iv.length);
 
@@ -112,20 +121,44 @@ public class ClientMain {
 
             clientSession.sendMessage(output);
 
-            // TODO: Add this process for all newly sent messages
-            // TODO: Allow one to receive messages back from the server
-            // ========== Message sending and receiving ==========
-            byte[] receivedMessage = clientSession.pollForMessage();
+            // ========== Threads to allow sending and receiving of messages ==========
+            Thread sendThread = new Thread() {
+                public void run() {
+                    while (true) {
+                        String message = null;
+                        try {
+                            message = clientSession.captureUserInput();
+                            byte[] sendMessage = message.getBytes("UTF8");
+                            System.out.println("Sending message from client: " + message);
+                            clientSession.sendMessage(AES_KEY_LENGTH, IVSecureRandom, saltSecureRandom, clientPrivateKey, AESKey, usedNonces, sendMessage);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            };
 
-            while(true) {
-                String message = clientSession.captureUserInput();
-                clientSession.sendMessage(message);
-                // General test for byte array:
-                clientSession.sendMessage("TestStringToBytes".getBytes());
-            }
+            Thread receiveThread = new Thread() {
+                public void run() {
+                    while (true) {
+                        try {
+                            byte[][] messages = clientSession.fetchMessages(AES_KEY_LENGTH, AESKey, serverPublicKey, usedNonces);
+                            for (byte[] message : messages) {
+                                if (message != null) {
+                                    System.out.println(new String(message, "UTF8"));
+                                }
+                            }
+                            sleep(SLEEP_TIME);
+                        } catch (IOException | InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            };
+
+            receiveThread.start();
+            sendThread.start();
         } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }

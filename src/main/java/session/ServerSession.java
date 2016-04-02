@@ -6,7 +6,11 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.Key;
+import java.security.SecureRandom;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Set;
 
 /**
  * Contains functionality to accepts a connections from the client
@@ -21,63 +25,47 @@ public class ServerSession extends Session {
 
     /**
      * Constructs a default ServerSession with the default port
+     *
      * @throws IOException
      */
-    public ServerSession () throws IOException {
+    public ServerSession() throws IOException {
         this(PORT);
     }
 
     /**
      * Constructs a default ServerSession with a specified port
+     *
      * @throws IOException
      */
-    public ServerSession (int port) throws IOException {
+    public ServerSession(int port) throws IOException {
         serversocket = new ServerSocket(port);
     }
 
     /**
      * Wait indefinitely until a client connects to the socket
+     *
      * @throws IOException
      */
     public void waitForConnection() throws IOException {
         System.out.println("Listening at 127.0.0.1 on port " + serversocket.getLocalPort());
         socket = serversocket.accept();
-        printWriter = new PrintWriter(socket.getOutputStream(),true);
+        printWriter = new PrintWriter(socket.getOutputStream(), true);
         InputStreamReader inputstreamreader = new InputStreamReader(socket.getInputStream());
         inputReader = new BufferedReader(inputstreamreader);
         System.out.println("Connected to ClientSession.");
     }
 
-    /**
-     * Sense a message using the socket created
-     * @param message the byte array message to send
-     *
-     */
-    public void sendMessage(byte[] message)  {
-        sendMessage(printWriter, message);
+    public void sendMessage(final int AES_KEY_LENGTH, SecureRandom IVSecureRandom, SecureRandom saltSecureRandom, RSAPrivateKey privateKey, Key AESKey,
+                            Set<String> usedNonces, byte[] message) throws IOException {
+        sendMessage(AES_KEY_LENGTH, IVSecureRandom, saltSecureRandom, privateKey, AESKey, printWriter, usedNonces, message);
     }
 
-    public void sendMessage(String message) {
-        sendMessage(printWriter, message);
+    public byte[][] fetchMessages(int encryptedAESKeyLength, Key AESKey, RSAPublicKey senderPublicKey, Set<String> usedNonces) throws IOException {
+        return fetchMessages(encryptedAESKeyLength, AESKey, senderPublicKey, usedNonces, inputReader);
     }
 
-    public byte[] fetchMessage() throws IOException {
-        return fetchMessage(inputReader);
-    }
-
-    public byte[][] fetchMessages() throws IOException {
-        return fetchMessages(inputReader);
-    }
 
     public byte[] pollForMessage() throws IOException, InterruptedException {
         return pollForMessage(inputReader);
-    }
-
-    public void sendRSAPublicKey(RSAPublicKey publicKey) throws IOException {
-        sendRSAPublicKey(publicKey, socket);
-    }
-
-    public RSAPublicKey retrieveRSAPublicKey() throws IOException, ClassNotFoundException {
-        return retrieveRSAPublicKey(socket);
     }
 }
