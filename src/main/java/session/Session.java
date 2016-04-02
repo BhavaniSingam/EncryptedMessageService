@@ -49,7 +49,7 @@ class Session {
     }
 
     public byte[] encryptMessage(final int AES_KEY_LENGTH, SecureRandom IVSecureRandom, SecureRandom saltSecureRandom, RSAPrivateKey privateKey, Key AESKey,
-                                 Set<String> usedNonces, byte[] message) throws IOException {
+                                 Set<String> usedNonces, byte[] message) throws IOException{
         // Generate random salt - this can be sent as plaintext
         byte[] iv = AES.generateIV(saltSecureRandom, AES_KEY_LENGTH);
         System.out.println("Random salt generated (visualised as a base64 string): " + Base64.getEncoder().encodeToString(iv));
@@ -90,8 +90,9 @@ class Session {
         System.out.println("Before zipping length: " + concatenatedSignatureAndMessage.length);
         byte[] zippedMessage = ZIP.compress(concatenatedSignatureAndMessage);
         System.out.println("After zipping length: " + zippedMessage.length);
-        System.out.println("Zipped message (Base64): " + Base64.getEncoder().encodeToString(zippedMessage));
 
+        System.out.println("Zipped message (Base64): " + Base64.getEncoder().encodeToString(zippedMessage));
+        System.out.println(AESKey.toString());
         byte[] encryptedMessage = AES.encrypt(zippedMessage, AESKey, AES_TRANSFORMATION, iv);
         System.out.println("Encrypted message (Base64): " + Base64.getEncoder().encodeToString(encryptedMessage));
 
@@ -153,8 +154,7 @@ class Session {
             throws IOException {
         String input;
         List<byte[]> messages = new ArrayList<>();
-
-        while (inputReader.ready() && (input = inputReader.readLine()) != null) {
+        while (inputReader.ready() && (input = inputReader.readLine()) != null){
             byte[] decodedInput = decryptMessage(input, encryptedAESKeyLength, AESKey, senderPublicKey, usedNonces);
             messages.add(decodedInput);
         }
