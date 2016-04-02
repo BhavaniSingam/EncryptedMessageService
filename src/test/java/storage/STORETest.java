@@ -10,7 +10,9 @@ import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * <h1>STORE Test</h1>
@@ -22,6 +24,9 @@ public class STORETest
 {
     private static final String PUBLIC_KEY_FILE_PATH = "public.store";
     private static final String PRIVATE_KEY_FILE_PATH = "private.store";
+
+    private static final String PRIVATE_KEY_RING_FILE_PATH = "private-key-ring.csv";
+    private static final String PUBLIC_KEY_RING_FILE_PATH = "public-key-ring.csv";
 
     private static void deleteFile(String fileName)
     {
@@ -38,12 +43,14 @@ public class STORETest
     {
         deleteFile(PUBLIC_KEY_FILE_PATH);
         deleteFile(PRIVATE_KEY_FILE_PATH);
+        deleteFile(PRIVATE_KEY_RING_FILE_PATH);
+        deleteFile(PUBLIC_KEY_RING_FILE_PATH);
     }
 
     @Test
     public void storageTest()
     {
-        KeyPair keyPair = RSA.generateKeyPair(1024);
+        KeyPair keyPair = RSA.generateKeyPair(2048);
 
         STORE.savePublicKeyToFile(PUBLIC_KEY_FILE_PATH, keyPair.getPublic());
         STORE.savePrivateKeyToFile(PRIVATE_KEY_FILE_PATH, keyPair.getPrivate());
@@ -53,5 +60,42 @@ public class STORETest
 
         PrivateKey privateKey = STORE.readPrivateKeyFromFile(PRIVATE_KEY_FILE_PATH);
         assertNotNull(privateKey);
+    }
+
+    @Test
+    public void keyPrivateKeyRingTest()
+    {
+        //generate key first key pair
+        KeyPair keyPair1 = RSA.generateKeyPair(2048);
+
+        long keyID = STORE.saveKeysToPrivateKeyRing(keyPair1.getPublic(), keyPair1.getPrivate(), PRIVATE_KEY_RING_FILE_PATH);
+        assertFalse(keyID == 0);
+
+        KeyPair keyPair2 = STORE.readKeysFromPrivateKeyRing(keyID, PRIVATE_KEY_RING_FILE_PATH);
+        assertNotNull(keyPair2);
+
+        long keyID2 = STORE.generateKeyID(keyPair2.getPublic());
+        assertFalse(keyID2 == 0);
+        assertTrue(keyID == keyID2);
+    }
+
+    @Test
+    public void keyPublicKeyRingTest()
+    {
+        KeyPair keyPair = RSA.generateKeyPair(2048);
+
+        //generate ID for key to be saved
+        long keyID = STORE.generateKeyID(keyPair.getPublic());
+        assertFalse(keyID == 0);
+
+        STORE.saveKeyToPublicKeyRing(keyID, keyPair.getPublic(), PUBLIC_KEY_RING_FILE_PATH);
+
+        PublicKey publicKey = STORE.readKeyFromPublicKeyRing(keyID, PUBLIC_KEY_RING_FILE_PATH);
+        assertNotNull(publicKey);
+
+        long keyID2 = STORE.generateKeyID(publicKey);
+        assertFalse(keyID2 == 0);
+        assertTrue(keyID == keyID2);
+
     }
 }
