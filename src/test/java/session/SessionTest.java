@@ -33,16 +33,17 @@ public class SessionTest {
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
 
-        Set <String> noncesUsed = new HashSet<>();
+        Set <String> noncesUsedC = new HashSet<>(); // nonces used by client
+        Set <String> noncesUsedS = new HashSet<>(); // nonces used by sever
 
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(keySize);
         Key aesKey = keyGen.generateKey();
 
-        byte [] encryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsed ,original_Message);
+        byte [] encryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsedC ,original_Message);
         String input = Base64.getEncoder().encodeToString(encryptedMessage);
 
-        byte [] decrypted_Message = aSession.decryptMessage(input, keySize, aesKey, publicKey, noncesUsed);
+        byte [] decrypted_Message = aSession.decryptMessage(input, keySize, aesKey, publicKey, noncesUsedS);
         String decryptedMessage = new String(decrypted_Message);
 
         assertEquals(decryptedMessage, originalMessage);
