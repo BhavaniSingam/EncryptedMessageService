@@ -13,6 +13,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Base64;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 public class SessionTest {
@@ -29,13 +30,17 @@ public class SessionTest {
         SecureRandom ivRandom = new SecureRandom();
         SecureRandom saltRandom = new SecureRandom();
 
+        // generate key pair
         KeyPair keyPair = rsa.generateKeyPair(1024);
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        assertNotNull(keyPair);
 
+        // used nonces
         Set <String> noncesUsedC = new HashSet<>(); // nonces used by client
         Set <String> noncesUsedS = new HashSet<>(); // nonces used by sever
 
+        // aes key generation
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(keySize);
         Key aesKey = keyGen.generateKey();
@@ -47,5 +52,99 @@ public class SessionTest {
         String decryptedMessage = new String(decrypted_Message);
 
         assertEquals(decryptedMessage, originalMessage);
+
+    }
+
+    @Test
+    // test will fail
+    public void testReplayMessage() throws Exception{
+        Session aSession = new Session();
+        RSA rsa = new RSA();
+
+        String originalMessage = "Testing encryption";
+        byte [] original_Message = originalMessage.getBytes("UTF8");
+        final int keySize = 128;
+
+        SecureRandom ivRandom = new SecureRandom();
+        SecureRandom saltRandom = new SecureRandom();
+
+        // generate key pair
+        KeyPair keyPair = rsa.generateKeyPair(1024);
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        assertNotNull(keyPair);
+
+        // used nonces
+        Set <String> noncesUsedC = new HashSet<>(); // nonces used by client
+        Set <String> noncesUsedS = new HashSet<>(); // nonces used by sever
+
+        // aes key generation
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        keyGen.init(keySize);
+        Key aesKey = keyGen.generateKey();
+
+        byte [] encryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsedC ,original_Message);
+        String input = Base64.getEncoder().encodeToString(encryptedMessage);
+
+        Iterator iterator = noncesUsedC.iterator();
+        String usedNonce = iterator.next().toString();
+        noncesUsedS.add(usedNonce);
+
+        byte [] decrypted_Message = aSession.decryptMessage(input, keySize, aesKey, publicKey, noncesUsedS);
+        String decryptedMessage = new String(decrypted_Message);
+
+        assertTrue(noncesUsedS.contains(usedNonce));
+        assertFalse(!noncesUsedS.contains(usedNonce));
+    }
+
+    @Test
+    // test will fail
+    public void testModifiedMessage() throws Exception{
+        Session aSession = new Session();
+        RSA rsa = new RSA();
+
+        String originalMessage = "Friday is your day off";
+        byte [] original_Message = originalMessage.getBytes("UTF8");
+        final int keySize = 128;
+
+        SecureRandom ivRandom = new SecureRandom();
+        SecureRandom saltRandom = new SecureRandom();
+
+        // generate key pair
+        KeyPair keyPair = rsa.generateKeyPair(1024);
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        assertNotNull(keyPair);
+
+        // used nonces
+        Set <String> noncesUsedC = new HashSet<>(); // nonces used by client
+        Set <String> noncesUsedS = new HashSet<>(); // nonces used by sever
+
+        // aes key generation
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        keyGen.init(keySize);
+        Key aesKey = keyGen.generateKey();
+
+        byte [] encryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsedC ,original_Message);
+        String input = Base64.getEncoder().encodeToString(encryptedMessage);
+
+        // assume someone decrypts, modifies and re-sends it.
+        byte [] stolen_Message = aSession.decryptMessage(input, keySize, aesKey, publicKey, noncesUsedS);
+        String stolenMessage = new String(stolen_Message);
+        System.out.println(stolenMessage);
+        String newMessage = "There is a meeting on Friday";
+        byte [] new_Message = newMessage.getBytes("UTF8");
+        byte [] modifiedEncryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsedC ,new_Message);
+        // modified encrypted message is sent
+
+        // receiver decrypts modified input..encrypted with sender's key.
+        String modifiedInput = Base64.getEncoder().encodeToString(modifiedEncryptedMessage);
+        byte [] decrypted_Message = aSession.decryptMessage(modifiedInput, keySize, aesKey, publicKey, noncesUsedS);
+        String decryptedMessage = new String(decrypted_Message);
+
+        System.out.println("Original message: " + originalMessage);
+        System.out.println("Decrypted message: " + decryptedMessage);
+
+        assertNotEquals(decryptedMessage, originalMessage);
     }
 }
