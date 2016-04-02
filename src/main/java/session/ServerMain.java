@@ -32,7 +32,6 @@ public class ServerMain {
             ServerSession serverSession = new ServerSession();
             serverSession.waitForConnection();
             SecureRandom IVSecureRandom = new SecureRandom();
-            SecureRandom saltSecureRandom = new SecureRandom();
             Set<String> usedNonces = new HashSet<>();
 
             // ========== RSA key exchange ==========
@@ -54,29 +53,29 @@ public class ServerMain {
             System.out.println("AES key (Base64): " + Base64.getEncoder().encodeToString(AESKeyByteArray));
             Key AESKey = new SecretKeySpec(AESKeyByteArray, 0, AESKeyByteArray.length, "AES");
 
-            // ========== Salt length ==========
-            ByteBuffer byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(receivedMessage, encryptedAESKeyLength, encryptedAESKeyLength + 4));
-            int ivNumberOfBytes = byteBuffer.getInt();
-            System.out.println("Number of bits in the random salt (IV): " + ivNumberOfBytes * 8);
-
             // ========== Random Salt ==========
-            int IVStartIndex = encryptedAESKeyLength + 4;
-            byte[] iv = Arrays.copyOfRange(receivedMessage, IVStartIndex, IVStartIndex + ivNumberOfBytes);
-            System.out.println("Random salt (Base64): " + Base64.getEncoder().encodeToString(iv));
+            int IVStartIndex = encryptedAESKeyLength;
+            byte[] nonce = Arrays.copyOfRange(receivedMessage, IVStartIndex, IVStartIndex + AESKeyByteArray.length);
+            String nonceTxt = Base64.getEncoder().encodeToString(nonce);
+            if (usedNonces.contains(nonceTxt)) {
+                System.out.println("Nonce has already been used, dropping message");
+                return;
+            }
+            System.out.println("Nonce (Base64): " + Base64.getEncoder().encodeToString(nonce));
 
             // ========== Encrypted data ==========
-            int encryptedDataStartIndex = IVStartIndex + ivNumberOfBytes;
+            int encryptedDataStartIndex = IVStartIndex + AESKeyByteArray.length;
             byte[] encryptedData = Arrays.copyOfRange(receivedMessage, encryptedDataStartIndex, receivedMessage.length);
             System.out.println("Encrypted data (Base64): " + Base64.getEncoder().encodeToString(encryptedData));
 
             // ========== Decrypt message ==========
-            byte[] unencryptedData = AES.decrypt(encryptedData, AESKey, AES_TRANSFORMATION, iv);
+            byte[] unencryptedData = AES.decrypt(encryptedData, AESKey, AES_TRANSFORMATION, nonce);
             System.out.println("Unencrypted Data (Base64): " + Base64.getEncoder().encodeToString(unencryptedData));
             byte[] unzippedData = ZIP.decompress(unencryptedData);
             System.out.println("Unzipped Data (Base64): " + Base64.getEncoder().encodeToString(unzippedData));
 
             // ========== Signature length ==========
-            byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(unzippedData, 0, 4));
+            ByteBuffer byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(unzippedData, 0, 4));
             int signatureLength = byteBuffer.getInt();
             System.out.println("Signature length: " + signatureLength);
 
@@ -87,19 +86,10 @@ public class ServerMain {
                 System.out.println("Signature does not match, ignoring message");
                 return;
             }
-
-            // ========== Nonce ==========
-            byte[] nonce = Arrays.copyOfRange(messageSection, 0, 8);
-            String nonceTxt = Base64.getEncoder().encodeToString(nonce);
-            System.out.println("Nonce (Base64): " + nonceTxt);
-            if (usedNonces.contains(nonceTxt)) {
-                System.out.println("Nonce has already been used, dropping message");
-                return;
-            }
             usedNonces.add(nonceTxt);
 
             // ========== Message ==========
-            byte[] messageContents = Arrays.copyOfRange(messageSection, 8, messageSection.length);
+            byte[] messageContents = Arrays.copyOfRange(messageSection, 0, messageSection.length);
             System.out.println("Message: " + new String(messageContents, "UTF8"));
 
             // ========== Threads to allow sending and receiving of messages ==========
@@ -107,7 +97,7 @@ public class ServerMain {
                 public void run() {
                     while (true) {
                         try {
-                            byte[][] messages = serverSession.fetchMessages(AESKeyByteArray.length * 8, AESKey, clientPublicKey, usedNonces);
+                            byte[][] messages = serverSession.fetchMessages(AESKey, clientPublicKey, usedNonces);
                             for (byte[] message : messages) {
                                 if (message != null) {
                                     System.out.println(new String(message, "UTF8"));
@@ -129,7 +119,7 @@ public class ServerMain {
                             message = serverSession.captureUserInput();
                             byte[] sendMessage = message.getBytes("UTF8");
                             System.out.println("Sending message from client: " + message);
-                            serverSession.sendMessage(AESKeyByteArray.length * 8, IVSecureRandom, saltSecureRandom, serverPrivateKey, AESKey, usedNonces,
+                            serverSession.sendMessage(IVSecureRandom, serverPrivateKey, AESKey, usedNonces,
                                     sendMessage);
                         } catch (IOException e) {
                             e.printStackTrace();

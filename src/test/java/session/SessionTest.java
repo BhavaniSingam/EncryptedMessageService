@@ -45,10 +45,10 @@ public class SessionTest {
         keyGen.init(keySize);
         Key aesKey = keyGen.generateKey();
 
-        byte [] encryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsedC ,original_Message);
+        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, privateKey, aesKey, noncesUsedC ,original_Message);
         String input = Base64.getEncoder().encodeToString(encryptedMessage);
 
-        byte [] decrypted_Message = aSession.decryptMessage(input, keySize, aesKey, publicKey, noncesUsedS);
+        byte [] decrypted_Message = aSession.decryptMessage(input, aesKey, publicKey, noncesUsedS);
         String decryptedMessage = new String(decrypted_Message);
 
         assertEquals(decryptedMessage, originalMessage);
@@ -56,7 +56,6 @@ public class SessionTest {
     }
 
     @Test
-    // test will fail
     public void testReplayMessage() throws Exception{
         Session aSession = new Session();
         RSA rsa = new RSA();
@@ -83,22 +82,21 @@ public class SessionTest {
         keyGen.init(keySize);
         Key aesKey = keyGen.generateKey();
 
-        byte [] encryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsedC ,original_Message);
+        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, privateKey, aesKey, noncesUsedC ,original_Message);
         String input = Base64.getEncoder().encodeToString(encryptedMessage);
 
         Iterator iterator = noncesUsedC.iterator();
         String usedNonce = iterator.next().toString();
         noncesUsedS.add(usedNonce);
 
-        byte [] decrypted_Message = aSession.decryptMessage(input, keySize, aesKey, publicKey, noncesUsedS);
-        String decryptedMessage = new String(decrypted_Message);
+        byte [] decrypted_Message = aSession.decryptMessage(input, aesKey, publicKey, noncesUsedS);
+        assertNull(decrypted_Message);
 
         assertTrue(noncesUsedS.contains(usedNonce));
         assertFalse(!noncesUsedS.contains(usedNonce));
     }
 
     @Test
-    // test will fail
     public void testModifiedMessage() throws Exception{
         Session aSession = new Session();
         RSA rsa = new RSA();
@@ -125,21 +123,21 @@ public class SessionTest {
         keyGen.init(keySize);
         Key aesKey = keyGen.generateKey();
 
-        byte [] encryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsedC ,original_Message);
+        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, privateKey, aesKey, noncesUsedC ,original_Message);
         String input = Base64.getEncoder().encodeToString(encryptedMessage);
 
         // assume someone decrypts, modifies and re-sends it.
-        byte [] stolen_Message = aSession.decryptMessage(input, keySize, aesKey, publicKey, noncesUsedS);
+        byte [] stolen_Message = aSession.decryptMessage(input, aesKey, publicKey, noncesUsedS);
         String stolenMessage = new String(stolen_Message);
         System.out.println(stolenMessage);
         String newMessage = "There is a meeting on Friday";
         byte [] new_Message = newMessage.getBytes("UTF8");
-        byte [] modifiedEncryptedMessage = aSession.encryptMessage(keySize, ivRandom, saltRandom, privateKey, aesKey, noncesUsedC ,new_Message);
+        byte [] modifiedEncryptedMessage = aSession.encryptMessage(ivRandom, privateKey, aesKey, noncesUsedC ,new_Message);
         // modified encrypted message is sent
 
         // receiver decrypts modified input..encrypted with sender's key.
         String modifiedInput = Base64.getEncoder().encodeToString(modifiedEncryptedMessage);
-        byte [] decrypted_Message = aSession.decryptMessage(modifiedInput, keySize, aesKey, publicKey, noncesUsedS);
+        byte [] decrypted_Message = aSession.decryptMessage(modifiedInput, aesKey, publicKey, noncesUsedS);
         String decryptedMessage = new String(decrypted_Message);
 
         System.out.println("Original message: " + originalMessage);

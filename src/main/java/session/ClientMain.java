@@ -34,7 +34,6 @@ public class ClientMain {
             ClientSession clientSession = new ClientSession();
             Set<String> usedNonces = new HashSet<>();
             SecureRandom IVSecureRandom = new SecureRandom();
-            SecureRandom saltSecureRandom = new SecureRandom();
 
             // ========== RSA key exchange ==========
             // Read 2048 bit keys from storage
@@ -56,19 +55,15 @@ public class ClientMain {
             System.out.println("Encrypted AES key with server public key, length of encrypted key is " + encryptedKey.length * 8 + " bits");
             System.out.println("Encrypted AES key (Base64): " + Base64.getEncoder().encodeToString(encryptedKey));
 
-            // Generate random salt - this can be sent as plaintext
-            byte[] iv = AES.generateIV(saltSecureRandom, AES_KEY_LENGTH);
-            System.out.println("Random salt generated (visualised as a base64 string): " + Base64.getEncoder().encodeToString(iv));
-
-            // Generate a nonce
+            // Generate nonce / random salt - this can be sent as plaintext
             byte[] nonce;
             String nonceTxt;
             do {
-                nonce = AES.generateIV(IVSecureRandom, 64);
+                nonce = AES.generateIV(IVSecureRandom, AES_KEY_LENGTH);
                 nonceTxt = Base64.getEncoder().encodeToString(nonce);
             } while (usedNonces.contains(nonceTxt));
             usedNonces.add(nonceTxt);
-            System.out.println("64 bit nonce generated (visualised as base64): " + nonceTxt);
+            System.out.println("Nonce generated (visualised as base64): " + nonceTxt);
 
             // ========== Hello Message ==========
             String text = "PGP Hello";
@@ -77,10 +72,9 @@ public class ClientMain {
 
             // ========== Message contents ==========
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            outputStream.write(nonce);
             outputStream.write(clientMessage);
             byte[] messageContents = outputStream.toByteArray();
-            System.out.println("Message contents (Nonce and message), visualised as base64 string: " + Base64.getEncoder().encodeToString(messageContents));
+            System.out.println("Message contents, visualised as base64 string: " + Base64.getEncoder().encodeToString(messageContents));
 
             // ========== Signature ==========
             byte[] signature = DigitalSignature.generateSignature(messageContents, clientPrivateKey, SIGNATURE_TRANSFORMATION);
@@ -103,19 +97,14 @@ public class ClientMain {
             System.out.println("After zipping length: " + zippedMessage.length);
             System.out.println("Zipped message (Base64): " + Base64.getEncoder().encodeToString(zippedMessage));
 
-            byte[] encryptedMessage = AES.encrypt(zippedMessage, AESKey, AES_TRANSFORMATION, iv);
+            byte[] encryptedMessage = AES.encrypt(zippedMessage, AESKey, AES_TRANSFORMATION, nonce);
             System.out.println("Encrypted message (Base64): " + Base64.getEncoder().encodeToString(encryptedMessage));
 
             // ========== Final message construction ==========
             outputStream.reset();
 
-            // Include the length of the salt
-            byteBuffer = ByteBuffer.allocate(4);
-            byteBuffer.putInt(iv.length);
-
             outputStream.write(encryptedKey);
-            outputStream.write(byteBuffer.array());
-            outputStream.write(iv);
+            outputStream.write(nonce);
             outputStream.write(encryptedMessage);
             byte[] output = outputStream.toByteArray();
 
@@ -130,7 +119,7 @@ public class ClientMain {
                             message = clientSession.captureUserInput();
                             byte[] sendMessage = message.getBytes("UTF8");
                             System.out.println("Sending message from client: " + message);
-                            clientSession.sendMessage(AES_KEY_LENGTH, IVSecureRandom, saltSecureRandom, clientPrivateKey, AESKey, usedNonces, sendMessage);
+                            clientSession.sendMessage(IVSecureRandom, clientPrivateKey, AESKey, usedNonces, sendMessage);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -142,7 +131,7 @@ public class ClientMain {
                 public void run() {
                     while (true) {
                         try {
-                            byte[][] messages = clientSession.fetchMessages(AES_KEY_LENGTH, AESKey, serverPublicKey, usedNonces);
+                            byte[][] messages = clientSession.fetchMessages(AESKey, serverPublicKey, usedNonces);
                             for (byte[] message : messages) {
                                 if (message != null) {
                                     System.out.println(new String(message, "UTF8"));
