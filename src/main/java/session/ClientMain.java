@@ -11,6 +11,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.Key;
+import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -38,12 +39,12 @@ public class ClientMain {
 
             // ========== RSA key exchange ==========
             // Read 2048 bit keys from storage
-            RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.CLIENT_PUBLIC_KEY_FILE_NAME);
-            RSAPrivateKey clientPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys
-                    .CLIENT_PRIVATE_KEY_FILE_NAME);
+            KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(-7975117869850543847L, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
+            RSAPublicKey clientPublicKey = (RSAPublicKey) readKeyPair.getPublic();
+            RSAPrivateKey clientPrivateKey = (RSAPrivateKey) readKeyPair.getPrivate();
 
             // Read server public key from file
-            RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.SERVER_PUBLIC_KEY_FILE_NAME);
+            RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(5919969100937786679L, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
 
             // ========== AES key exchange ==========
             // Generate AES key
