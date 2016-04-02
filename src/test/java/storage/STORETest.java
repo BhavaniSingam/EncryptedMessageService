@@ -7,7 +7,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.security.KeyPair;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 
 import static org.junit.Assert.assertFalse;
@@ -22,9 +21,6 @@ import static org.junit.Assert.assertTrue;
  */
 public class STORETest
 {
-    private static final String PUBLIC_KEY_FILE_PATH = "public.store";
-    private static final String PRIVATE_KEY_FILE_PATH = "private.store";
-
     private static final String PRIVATE_KEY_RING_FILE_PATH = "private-key-ring.csv";
     private static final String PUBLIC_KEY_RING_FILE_PATH = "public-key-ring.csv";
 
@@ -41,25 +37,8 @@ public class STORETest
     @After
     public void deleteGeneratedFiles()
     {
-        deleteFile(PUBLIC_KEY_FILE_PATH);
-        deleteFile(PRIVATE_KEY_FILE_PATH);
         deleteFile(PRIVATE_KEY_RING_FILE_PATH);
         deleteFile(PUBLIC_KEY_RING_FILE_PATH);
-    }
-
-    @Test
-    public void storageTest()
-    {
-        KeyPair keyPair = RSA.generateKeyPair(2048);
-
-        STORE.savePublicKeyToFile(PUBLIC_KEY_FILE_PATH, keyPair.getPublic());
-        STORE.savePrivateKeyToFile(PRIVATE_KEY_FILE_PATH, keyPair.getPrivate());
-
-        PublicKey publicKey = STORE.readPublicKeyFromFile(PUBLIC_KEY_FILE_PATH);
-        assertNotNull(publicKey);
-
-        PrivateKey privateKey = STORE.readPrivateKeyFromFile(PRIVATE_KEY_FILE_PATH);
-        assertNotNull(privateKey);
     }
 
     @Test
