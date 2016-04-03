@@ -15,6 +15,7 @@ import javax.swing.*;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.Key;
+import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -25,7 +26,7 @@ import java.util.*;
 import static session.Session.*;
 
 /**
- * @author Aashiq Parker
+ * @author Brian Mc George
  */
 public class ServerUI extends JFrame {
     private JFrame frame;
@@ -45,12 +46,12 @@ public class ServerUI extends JFrame {
 
     // ========== RSA key exchange ==========
     // Read 2048 bit RSA keys from file
-    RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.SERVER_PUBLIC_KEY_FILE_NAME);
-    RSAPrivateKey serverPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.SERVER_KEYS_FOLDER + StoreKeys
-            .SERVER_PRIVATE_KEY_FILE_NAME);
+    KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(StoreKeys.SERVER_KEYID, StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
+    RSAPublicKey serverPublicKey = (RSAPublicKey) readKeyPair.getPublic();
+    RSAPrivateKey serverPrivateKey = (RSAPrivateKey) readKeyPair.getPrivate();
 
     // Retrieve server public key
-    RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.CLIENT_PUBLIC_KEY_FILE_NAME);
+    RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(StoreKeys.CLIENT_KEYID, StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
 
     //Constructor
     public ServerUI() {
@@ -73,7 +74,7 @@ public class ServerUI extends JFrame {
         }
 
         //The main frame
-        frame = new JFrame("Encrypted Message Client");
+        frame = new JFrame("Encrypted Message Server");
         frame.setSize(1000, 900);
         frame.setResizable(true);
         frame.setDefaultCloseOperation(EXIT_ON_CLOSE);

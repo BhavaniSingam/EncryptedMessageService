@@ -14,6 +14,7 @@ import javax.swing.*;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.Key;
+import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -44,12 +45,12 @@ public class ClientUI extends JFrame {
 
     // ========== RSA key exchange ==========
     // Read 2048 bit keys from storage
-    RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.CLIENT_PUBLIC_KEY_FILE_NAME);
-    RSAPrivateKey clientPrivateKey = (RSAPrivateKey) STORE.readPrivateKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys
-            .CLIENT_PRIVATE_KEY_FILE_NAME);
+    KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(StoreKeys.CLIENT_KEYID, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
+    RSAPublicKey clientPublicKey = (RSAPublicKey) readKeyPair.getPublic();
+    RSAPrivateKey clientPrivateKey = (RSAPrivateKey) readKeyPair.getPrivate();
 
     // Read server public key from file
-    RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readPublicKeyFromFile(StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.SERVER_PUBLIC_KEY_FILE_NAME);
+    RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(StoreKeys.SERVER_KEYID, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
 
     // ========== AES key exchange ==========
     // Generate AES key
@@ -76,7 +77,7 @@ public class ClientUI extends JFrame {
         }
 
         //The main frame
-        frame = new JFrame("Encrypted Message Server");
+        frame = new JFrame("Encrypted Message Client");
         frame.setSize(1000, 900);
         frame.setResizable(true);
         frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
