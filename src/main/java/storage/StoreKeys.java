@@ -18,6 +18,9 @@ public class StoreKeys
     public static final String PUBLIC_KEY_RING_FILE_NAME = "public-key-ring.csv";
     public static final String PRIVATE_KEY_RING_FILE_NAME = "private-key-ring.csv";
 
+    public static long SERVER_KEYID = -5060198075320907455L;
+    public static long CLIENT_KEYID = 1691717836465433563L;
+
     public static void main(String[] args)
     {
         KeyPair clientKeyPair = RSA.generateKeyPair(2048);

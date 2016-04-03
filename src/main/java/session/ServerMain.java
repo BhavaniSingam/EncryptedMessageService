@@ -37,12 +37,12 @@ public class ServerMain {
 
             // ========== RSA key exchange ==========
             // Read 2048 bit RSA keys from file
-            KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(5919969100937786679L, StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
+            KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(StoreKeys.SERVER_KEYID, StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
             RSAPublicKey serverPublicKey = (RSAPublicKey) readKeyPair.getPublic();
             RSAPrivateKey serverPrivateKey = (RSAPrivateKey) readKeyPair.getPrivate();
 
             // Retrieve server public key
-            RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(-7975117869850543847L, StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
+            RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(StoreKeys.CLIENT_KEYID, StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
 
             // ========== Fetch the message from the client ==========
             byte[] receivedMessage = serverSession.pollForMessage();

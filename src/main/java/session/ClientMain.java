@@ -38,12 +38,12 @@ public class ClientMain {
 
             // ========== RSA key exchange ==========
             // Read 2048 bit keys from storage
-            KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(-7975117869850543847L, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
+            KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(StoreKeys.CLIENT_KEYID, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
             RSAPublicKey clientPublicKey = (RSAPublicKey) readKeyPair.getPublic();
             RSAPrivateKey clientPrivateKey = (RSAPrivateKey) readKeyPair.getPrivate();
 
             // Read server public key from file
-            RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(5919969100937786679L, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
+            RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(StoreKeys.SERVER_KEYID, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
 
             // ========== AES key exchange ==========
             // Generate AES key
