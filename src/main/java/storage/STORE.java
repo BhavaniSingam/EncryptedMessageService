@@ -23,14 +23,18 @@ public class STORE
      */
     public static long generateKeyID(PublicKey publicKey)
     {
-        //TODO: utilise BigInteger & with (18446744073709551615) which is (2^64)-1
         long keyID = 0;
 
+        //mask modulus with (2^64)-1
+        BigInteger mask = new BigInteger("18446744073709551615");
         try
         {
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             RSAPublicKeySpec publicKeySpec = keyFactory.getKeySpec(publicKey, RSAPublicKeySpec.class);
-            keyID = (publicKeySpec.getModulus()).longValue();
+
+            BigInteger temp = (publicKeySpec.getModulus()).and(mask);
+
+            keyID = temp.longValue();
         }
         catch (NoSuchAlgorithmException e)
         {
