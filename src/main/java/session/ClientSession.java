@@ -48,12 +48,12 @@ public class ClientSession extends Session {
         sendMessage(printWriter, message);
     }
 
-    public void sendMessage(final int AES_KEY_LENGTH, SecureRandom IVSecureRandom, SecureRandom saltSecureRandom, RSAPrivateKey privateKey, Key AESKey,
+    public void sendMessage(SecureRandom IVSecureRandom, RSAPrivateKey privateKey, Key AESKey,
                             Set<String> usedNonces, byte[] message) throws IOException {
-        sendMessage(AES_KEY_LENGTH, IVSecureRandom, saltSecureRandom, privateKey, AESKey, printWriter, usedNonces, message);
+        sendMessage(IVSecureRandom, privateKey, AESKey, printWriter, usedNonces, message);
     }
 
-    public byte[][] fetchMessages(int encryptedAESKeyLength, Key AESKey, RSAPublicKey senderPublicKey, Set<String> usedNonces) throws IOException {
-        return fetchMessages(encryptedAESKeyLength, AESKey, senderPublicKey, usedNonces, inputReader);
+    public byte[][] fetchMessages(Key AESKey, RSAPublicKey senderPublicKey, Set<String> usedNonces) throws IOException {
+        return fetchMessages(AESKey, senderPublicKey, usedNonces, inputReader);
     }
 }
