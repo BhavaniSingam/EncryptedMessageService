@@ -1,61 +1,131 @@
 package session;
 
-import encryption.AES;
-import encryption.RSA;
-import signature.DigitalSignature;
-import storage.STORE;
 import storage.StoreKeys;
-import zipping.ZIP;
 
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import javax.crypto.spec.SecretKeySpec;
-import javax.swing.*;
-
-import java.io.*;
-import java.nio.ByteBuffer;
-import java.security.Key;
-import java.security.KeyPair;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
-import static session.Session.*;
+import static session.Session.SLEEP_TIME;
 
 /**
+ * UI for the server
+ *
  * @author Brian Mc George
  */
 public class ServerUI extends JFrame {
     private JFrame frame;
     private JTextArea receiveText;
     private JButton sendButton;
-    //Heading
     private JLabel checkboxHeading;
-    JButton listenButton;
-
+    private JButton listenButton;
     private JTextArea sendText;
-    ServerSession serverSession;
-
-    Key AESKey;
-
-    SecureRandom IVSecureRandom = new SecureRandom();
-    Set<String> usedNonces = new HashSet<>();
-
-    // ========== RSA key exchange ==========
-    // Read 2048 bit RSA keys from file
-    KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(StoreKeys.SERVER_KEYID, StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
-    RSAPublicKey serverPublicKey = (RSAPublicKey) readKeyPair.getPublic();
-    RSAPrivateKey serverPrivateKey = (RSAPrivateKey) readKeyPair.getPrivate();
-
-    // Retrieve server public key
-    RSAPublicKey clientPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(StoreKeys.CLIENT_KEYID, StoreKeys.SERVER_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
+    private ServerSession serverSession;
+    private SecureRandom IVSecureRandom;
+    private Set<String> usedNonces;
 
     //Constructor
     public ServerUI() {
+        IVSecureRandom = new SecureRandom();
+        usedNonces = new HashSet<>();
+
         initialize();
+    }
+
+    private synchronized void addToChatWindow(String text) {
+        receiveText.setText(receiveText.getText() + text);
+    }
+
+    private class SendMessage implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            byte[] sendMessage;
+            try {
+                if (!sendText.getText().equals("")) {
+                    String text = sendText.getText();
+                    sendMessage = text.getBytes("UTF8");
+                    System.out.println("Message to send: " + text);
+                    addToChatWindow("\n" + getTime() + " " + text);
+                    serverSession.sendMessage(IVSecureRandom, usedNonces, sendMessage);
+                    sendText.setText("");
+                    System.out.println();
+                }
+            } catch (UnsupportedEncodingException e1) {
+                e1.printStackTrace();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+
+        }
+    }
+
+    private void waitForConnection() throws IOException, InterruptedException {
+        serverSession = new ServerSession();
+        serverSession.waitForConnection();
+        receiveText.setText("Connected to client");
+
+        // ========== Fetch the message from the client ==========
+        byte[] receivedMessage = serverSession.pollForMessage();
+        String message = serverSession.decryptHandshakeMessage(receivedMessage, StoreKeys.SERVER_KEYS_FOLDER, StoreKeys.PRIVATE_KEY_RING_FILE_NAME, StoreKeys
+                .PUBLIC_KEY_RING_FILE_NAME, usedNonces);
+
+        if(!message.equals("PGP Hello")) {
+            System.out.println("Invalid hello message");
+            System.exit(1);
+        }
+
+        System.out.println("Message: " + message);
+        System.out.println();
+
+        // ========== Threads to allow sending and receiving of messages ==========
+        Thread receiveThread = new Thread() {
+            public void run() {
+                while (true) {
+                    try {
+                        byte[][] messages = serverSession.fetchMessages(usedNonces);
+                        for (byte[] message : messages) {
+                            if (message != null) {
+                                addToChatWindow("\n" + getTime() + " Client: " + new String(message, "UTF8"));
+                            }
+                        }
+                        sleep(SLEEP_TIME);
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+        receiveThread.start();
+        listenButton.setText("Connected");
+        sendButton.setEnabled(true);
+    }
+
+    private class ListenActionListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Thread waitForConnectionThread = new Thread() {
+                public void run() {
+                    try {
+                        waitForConnection();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+            };
+            listenButton.setEnabled(false);
+            listenButton.setText("Listening");
+            waitForConnectionThread.start();
+        }
     }
 
     private void initialize() {
@@ -106,7 +176,7 @@ public class ServerUI extends JFrame {
 
         gbc.insets = new Insets(0, 10, 10, 0); //Padding
         listenButton = new JButton("Listen");
-        listenButton.addActionListener(new ConnectActionListener());
+        listenButton.addActionListener(new ListenActionListener());
         gbc.gridx = 1;
         gbc.gridy = 1;
         gbc.gridwidth = 1;
@@ -219,122 +289,6 @@ public class ServerUI extends JFrame {
         DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
         Date date = new Date();
         return dateFormat.format(date);
-    }
-
-    private class SendMessage implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-
-            byte[] sendMessage;
-            try {
-                if(!sendText.getText().equals("")) {
-                    sendMessage = sendText.getText().getBytes("UTF8");
-                    receiveText.setText(receiveText.getText() + "\n" + getTime() + " " + sendText.getText());
-                    serverSession.sendMessage(IVSecureRandom, serverPrivateKey, AESKey, usedNonces, sendMessage);
-                    sendText.setText("");
-                }
-            } catch (UnsupportedEncodingException e1) {
-                e1.printStackTrace();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-
-        }
-    }
-
-    private class ConnectActionListener implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            Thread waitForConnectionThread = new Thread() {
-                public void run() {
-                    try {
-                        serverSession = new ServerSession();
-                        serverSession.waitForConnection();
-                        receiveText.setText("Connected to client");
-
-                        // ========== Fetch the message from the client ==========
-                        byte[] receivedMessage = serverSession.pollForMessage();
-                        int encryptedAESKeyLength = serverPublicKey.getModulus().bitLength() / 8;
-                        byte[] encryptedKey = Arrays.copyOfRange(receivedMessage, 0, encryptedAESKeyLength);
-                        byte[] AESKeyByteArray = RSA.decrypt(encryptedKey, serverPrivateKey, RSA_TRANSFORMATION);
-                        System.out.println("Received message (Base64): " + Base64.getEncoder().encodeToString(receivedMessage));
-                        System.out.println("Encrypted AES key (Base64): " + Base64.getEncoder().encodeToString(encryptedKey));
-                        System.out.println("AES key (Base64): " + Base64.getEncoder().encodeToString(AESKeyByteArray));
-                        AESKey = new SecretKeySpec(AESKeyByteArray, 0, AESKeyByteArray.length, "AES");
-
-                        // ========== Random Salt ==========
-                        int IVStartIndex = encryptedAESKeyLength;
-                        byte[] nonce = Arrays.copyOfRange(receivedMessage, IVStartIndex, IVStartIndex + AESKeyByteArray.length);
-                        String nonceTxt = Base64.getEncoder().encodeToString(nonce);
-                        if (usedNonces.contains(nonceTxt)) {
-                            System.out.println("Nonce has already been used, dropping message");
-                            return;
-                        }
-                        System.out.println("Nonce (Base64): " + Base64.getEncoder().encodeToString(nonce));
-
-                        // ========== Encrypted data ==========
-                        int encryptedDataStartIndex = IVStartIndex + AESKeyByteArray.length;
-                        byte[] encryptedData = Arrays.copyOfRange(receivedMessage, encryptedDataStartIndex, receivedMessage.length);
-                        System.out.println("Encrypted data (Base64): " + Base64.getEncoder().encodeToString(encryptedData));
-
-                        // ========== Decrypt message ==========
-                        byte[] unencryptedData = AES.decrypt(encryptedData, AESKey, AES_TRANSFORMATION, nonce);
-                        System.out.println("Unencrypted Data (Base64): " + Base64.getEncoder().encodeToString(unencryptedData));
-                        byte[] unzippedData = ZIP.decompress(unencryptedData);
-                        System.out.println("Unzipped Data (Base64): " + Base64.getEncoder().encodeToString(unzippedData));
-
-                        // ========== Signature length ==========
-                        ByteBuffer byteBuffer = ByteBuffer.wrap(Arrays.copyOfRange(unzippedData, 0, 4));
-                        int signatureLength = byteBuffer.getInt();
-                        System.out.println("Signature length: " + signatureLength);
-
-                        // ========== Signature and verification ==========
-                        byte[] signature = Arrays.copyOfRange(unzippedData, 4, 4 + signatureLength);
-                        byte[] messageSection = Arrays.copyOfRange(unzippedData, 4 + signatureLength, unzippedData.length);
-                        if (!DigitalSignature.verifySignature(messageSection, signature, clientPublicKey, SIGNATURE_TRANSFORMATION)) {
-                            System.out.println("Signature does not match, ignoring message");
-                            return;
-                        }
-                        usedNonces.add(nonceTxt);
-
-                        // ========== Message ==========
-                        byte[] messageContents = Arrays.copyOfRange(messageSection, 0, messageSection.length);
-                        System.out.println("Message: " + new String(messageContents, "UTF8"));
-
-                        // ========== Threads to allow sending and receiving of messages ==========
-                        Thread receiveThread = new Thread() {
-                            public void run() {
-                                while (true) {
-                                    try {
-                                        byte[][] messages = serverSession.fetchMessages(AESKey, clientPublicKey, usedNonces);
-                                        for (byte[] message : messages) {
-                                            if (message != null) {
-                                                receiveText.setText(receiveText.getText() + "\n" + getTime() + " Client: " + new String(message, "UTF8"));
-                                            }
-                                        }
-                                        sleep(SLEEP_TIME);
-                                    } catch (IOException | InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            }
-                        };
-                        receiveThread.start();
-                        listenButton.setText("Connected");
-                        sendButton.setEnabled(true);
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    } catch (InterruptedException e1) {
-                        e1.printStackTrace();
-                    }
-                }
-            };
-            listenButton.setEnabled(false);
-            listenButton.setText("Listening");
-            waitForConnectionThread.start();
-        }
     }
 
     //For defining what happens when you resize the window

@@ -8,8 +8,6 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.Key;
 import java.security.SecureRandom;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.Set;
 
 /**
@@ -48,12 +46,12 @@ public class ClientSession extends Session {
         sendMessage(printWriter, message);
     }
 
-    public void sendMessage(SecureRandom IVSecureRandom, RSAPrivateKey privateKey, Key AESKey,
+    public void sendMessage(SecureRandom IVSecureRandom, Key AESKey,
                             Set<String> usedNonces, byte[] message) throws IOException {
-        sendMessage(IVSecureRandom, privateKey, AESKey, printWriter, usedNonces, message);
+        sendMessage(IVSecureRandom, printWriter, usedNonces, message);
     }
 
-    public byte[][] fetchMessages(Key AESKey, RSAPublicKey senderPublicKey, Set<String> usedNonces) throws IOException {
-        return fetchMessages(AESKey, senderPublicKey, usedNonces, inputReader);
+    public byte[][] fetchMessages(Key AESKey, Set<String> usedNonces) throws IOException {
+        return fetchMessages(usedNonces, inputReader);
     }
 }

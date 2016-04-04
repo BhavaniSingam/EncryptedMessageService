@@ -34,6 +34,8 @@ public class SessionTest {
         KeyPair keyPair = rsa.generateKeyPair(1024);
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        aSession.setRemotePublicKey(publicKey);
+        aSession.setLocalPrivateKey(privateKey);
         assertNotNull(keyPair);
 
         // used nonces
@@ -43,12 +45,12 @@ public class SessionTest {
         // aes key generation
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(keySize);
-        Key aesKey = keyGen.generateKey();
+        aSession.setAESKey(keyGen.generateKey());
 
-        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, privateKey, aesKey, noncesUsedC ,original_Message);
+        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, noncesUsedC ,original_Message);
         String input = Base64.getEncoder().encodeToString(encryptedMessage);
 
-        byte [] decrypted_Message = aSession.decryptMessage(input, aesKey, publicKey, noncesUsedS);
+        byte [] decrypted_Message = aSession.decryptMessage(input, noncesUsedS);
         String decryptedMessage = new String(decrypted_Message);
 
         assertEquals(decryptedMessage, originalMessage);
@@ -71,6 +73,8 @@ public class SessionTest {
         KeyPair keyPair = rsa.generateKeyPair(1024);
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        aSession.setRemotePublicKey(publicKey);
+        aSession.setLocalPrivateKey(privateKey);
         assertNotNull(keyPair);
 
         // used nonces
@@ -80,16 +84,16 @@ public class SessionTest {
         // aes key generation
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(keySize);
-        Key aesKey = keyGen.generateKey();
+        aSession.setAESKey(keyGen.generateKey());
 
-        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, privateKey, aesKey, noncesUsedC ,original_Message);
+        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, noncesUsedC ,original_Message);
         String input = Base64.getEncoder().encodeToString(encryptedMessage);
 
         Iterator iterator = noncesUsedC.iterator();
         String usedNonce = iterator.next().toString();
         noncesUsedS.add(usedNonce);
 
-        byte [] decrypted_Message = aSession.decryptMessage(input, aesKey, publicKey, noncesUsedS);
+        byte [] decrypted_Message = aSession.decryptMessage(input, noncesUsedS);
         assertNull(decrypted_Message);
 
         assertTrue(noncesUsedS.contains(usedNonce));
@@ -112,6 +116,8 @@ public class SessionTest {
         KeyPair keyPair = rsa.generateKeyPair(1024);
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        aSession.setRemotePublicKey(publicKey);
+        aSession.setLocalPrivateKey(privateKey);
         assertNotNull(keyPair);
 
         // used nonces
@@ -121,23 +127,23 @@ public class SessionTest {
         // aes key generation
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(keySize);
-        Key aesKey = keyGen.generateKey();
+        aSession.setAESKey(keyGen.generateKey());
 
-        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, privateKey, aesKey, noncesUsedC ,original_Message);
+        byte [] encryptedMessage = aSession.encryptMessage(ivRandom, noncesUsedC ,original_Message);
         String input = Base64.getEncoder().encodeToString(encryptedMessage);
 
         // assume someone decrypts, modifies and re-sends it.
-        byte [] stolen_Message = aSession.decryptMessage(input, aesKey, publicKey, noncesUsedS);
+        byte [] stolen_Message = aSession.decryptMessage(input, noncesUsedS);
         String stolenMessage = new String(stolen_Message);
         System.out.println(stolenMessage);
         String newMessage = "There is a meeting on Friday";
         byte [] new_Message = newMessage.getBytes("UTF8");
-        byte [] modifiedEncryptedMessage = aSession.encryptMessage(ivRandom, privateKey, aesKey, noncesUsedC ,new_Message);
+        byte [] modifiedEncryptedMessage = aSession.encryptMessage(ivRandom, noncesUsedC ,new_Message);
         // modified encrypted message is sent
 
         // receiver decrypts modified input..encrypted with sender's key.
         String modifiedInput = Base64.getEncoder().encodeToString(modifiedEncryptedMessage);
-        byte [] decrypted_Message = aSession.decryptMessage(modifiedInput, aesKey, publicKey, noncesUsedS);
+        byte [] decrypted_Message = aSession.decryptMessage(modifiedInput, noncesUsedS);
         String decryptedMessage = new String(decrypted_Message);
 
         System.out.println("Original message: " + originalMessage);

@@ -6,10 +6,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.Key;
 import java.security.SecureRandom;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.Set;
 
 /**
@@ -55,13 +52,13 @@ public class ServerSession extends Session {
         System.out.println("Connected to ClientSession.");
     }
 
-    public void sendMessage(SecureRandom IVSecureRandom, RSAPrivateKey privateKey, Key AESKey,
+    public void sendMessage(SecureRandom IVSecureRandom,
                             Set<String> usedNonces, byte[] message) throws IOException {
-        sendMessage(IVSecureRandom, privateKey, AESKey, printWriter, usedNonces, message);
+        sendMessage(IVSecureRandom, printWriter, usedNonces, message);
     }
 
-    public byte[][] fetchMessages(Key AESKey, RSAPublicKey senderPublicKey, Set<String> usedNonces) throws IOException {
-        return fetchMessages(AESKey, senderPublicKey, usedNonces, inputReader);
+    public byte[][] fetchMessages(Set<String> usedNonces) throws IOException {
+        return fetchMessages(usedNonces, inputReader);
     }
 
     public byte[] pollForMessage() throws IOException, InterruptedException {

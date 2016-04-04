@@ -1,30 +1,29 @@
 package session;
 
 import encryption.AES;
-import encryption.RSA;
-import signature.DigitalSignature;
 import storage.STORE;
 import storage.StoreKeys;
-import zipping.ZIP;
 
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import javax.swing.*;
-
-import java.io.*;
-import java.nio.ByteBuffer;
-import java.security.Key;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
-import static session.Session.*;
+import static session.Session.SLEEP_TIME;
 
 /**
+ * UI for the client
+ *
  * @author Brian Mc George
  */
 public class ClientUI extends JFrame {
@@ -39,26 +38,103 @@ public class ClientUI extends JFrame {
     ClientSession clientSession;
 
     private static final int AES_KEY_LENGTH = 128;
+    private Set<String> usedNonces;
+    private SecureRandom IVSecureRandom;
+    private RSAPublicKey clientPublicKey;
+    private RSAPrivateKey clientPrivateKey;
+    private RSAPublicKey serverPublicKey;
 
-    Set<String> usedNonces = new HashSet<>();
-    SecureRandom IVSecureRandom = new SecureRandom();
-
-    // ========== RSA key exchange ==========
-    // Read 2048 bit keys from storage
-    KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(StoreKeys.CLIENT_KEYID, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
-    RSAPublicKey clientPublicKey = (RSAPublicKey) readKeyPair.getPublic();
-    RSAPrivateKey clientPrivateKey = (RSAPrivateKey) readKeyPair.getPrivate();
-
-    // Read server public key from file
-    RSAPublicKey serverPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(StoreKeys.SERVER_KEYID, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PUBLIC_KEY_RING_FILE_NAME);
-
-    // ========== AES key exchange ==========
-    // Generate AES key
-    Key AESKey = AES.generateKey(AES_KEY_LENGTH);
 
     //Constructor
     public ClientUI() {
+        // Initialise components
+        usedNonces = new HashSet<>();
+        IVSecureRandom = new SecureRandom();
+
+        // ========== RSA key exchange ==========
+        // Read 2048 bit keys from storage
+        KeyPair readKeyPair = STORE.readKeysFromPrivateKeyRing(StoreKeys.CLIENT_KEYID, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys.PRIVATE_KEY_RING_FILE_NAME);
+        clientPublicKey = (RSAPublicKey) readKeyPair.getPublic();
+        clientPrivateKey = (RSAPrivateKey) readKeyPair.getPrivate();
+
+        // Read server public key from file
+        serverPublicKey = (RSAPublicKey) STORE.readKeyFromPublicKeyRing(StoreKeys.SERVER_KEYID, StoreKeys.CLIENT_KEYS_FOLDER + StoreKeys
+                .PUBLIC_KEY_RING_FILE_NAME);
+
         initialize();
+    }
+
+    private void initiateConnection() throws IOException {
+        clientSession = new ClientSession(textField.getText());
+        receiveText.setText(getTime() + ": Connected to server at " + textField.getText());
+
+        clientSession.setLocalPrivateKey(clientPrivateKey);
+        clientSession.setLocalPublicKey(clientPublicKey);
+        clientSession.setRemotePublicKey(serverPublicKey);
+        clientSession.setAESKey(AES.generateKey(AES_KEY_LENGTH));
+        byte[] output = clientSession.encryptHandshakeMessage(StoreKeys.SERVER_KEYID, StoreKeys.CLIENT_KEYID, IVSecureRandom, usedNonces);
+
+        clientSession.sendMessage(output);
+        System.out.println();
+
+        Thread receiveThread = new Thread() {
+            public void run() {
+                while (true) {
+                    try {
+                        byte[][] messages = clientSession.fetchMessages(serverPublicKey, usedNonces);
+                        for (byte[] message : messages) {
+                            if (message != null) {
+                                addToChatWindow("\n" + getTime() + " Server: " + new String(message, "UTF8"));
+                            }
+                        }
+                        sleep(SLEEP_TIME);
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+
+        receiveThread.start();
+        sendButton.setEnabled(true);
+    }
+
+    private synchronized void addToChatWindow(String text) {
+        receiveText.setText(receiveText.getText() + text);
+    }
+
+    private class SendMessage implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            byte[] sendMessage;
+            try {
+                if (!sendText.getText().equals("")) {
+                    String text = sendText.getText();
+                    sendMessage = text.getBytes("UTF8");
+                    System.out.println("Message to send: " + text);
+                    addToChatWindow("\n" + getTime() + " " + text);
+                    clientSession.sendMessage(IVSecureRandom, clientPrivateKey, usedNonces, sendMessage);
+                    sendText.setText("");
+                    System.out.println();
+                }
+            } catch (UnsupportedEncodingException e1) {
+                e1.printStackTrace();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+        }
+    }
+
+    private class ConnectActionListener implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                initiateConnection();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 
     private void initialize() {
@@ -228,125 +304,6 @@ public class ClientUI extends JFrame {
         DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
         Date date = new Date();
         return dateFormat.format(date);
-    }
-
-    private class SendMessage implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-
-            byte[] sendMessage;
-            try {
-                if(!sendText.getText().equals("")) {
-                    sendMessage = sendText.getText().getBytes("UTF8");
-                    receiveText.setText(receiveText.getText() + "\n" + getTime() + " " + sendText.getText());
-                    clientSession.sendMessage(IVSecureRandom, clientPrivateKey, AESKey, usedNonces, sendMessage);
-                    sendText.setText("");
-                }
-            } catch (UnsupportedEncodingException e1) {
-                e1.printStackTrace();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-
-        }
-    }
-
-    private class ConnectActionListener implements ActionListener {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            try {
-
-                clientSession = new ClientSession(textField.getText());
-                receiveText.setText(getTime() + ": Connected to server at " + textField.getText());
-                System.out.println("Generated an AES key of " + AESKey.getEncoded().length * 8 + " bits");
-                System.out.println("AES key (visualised as a base64 string): " + Base64.getEncoder().encodeToString(AESKey.getEncoded()));
-
-                // Encrypt the AES key
-                byte[] encryptedKey = RSA.encrypt(AESKey.getEncoded(), serverPublicKey, RSA_TRANSFORMATION);
-                System.out.println("Encrypted AES key with server public key, length of encrypted key is " + encryptedKey.length * 8 + " bits");
-                System.out.println("Encrypted AES key (Base64): " + Base64.getEncoder().encodeToString(encryptedKey));
-
-                // Generate nonce / random salt - this can be sent as plaintext
-                byte[] nonce;
-                String nonceTxt;
-                do {
-                    nonce = AES.generateIV(IVSecureRandom, AES_KEY_LENGTH);
-                    nonceTxt = Base64.getEncoder().encodeToString(nonce);
-                } while (usedNonces.contains(nonceTxt));
-                usedNonces.add(nonceTxt);
-                System.out.println("Nonce generated (visualised as base64): " + nonceTxt);
-
-                // ========== Hello Message ==========
-                String text = "PGP Hello";
-                byte[] clientMessage = text.getBytes("UTF8");
-                System.out.println("Sending an initial hello message: " + text);
-
-                // ========== Message contents ==========
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                outputStream.write(clientMessage);
-                byte[] messageContents = outputStream.toByteArray();
-                System.out.println("Message contents, visualised as base64 string: " + Base64.getEncoder().encodeToString(messageContents));
-
-                // ========== Signature ==========
-                byte[] signature = DigitalSignature.generateSignature(messageContents, clientPrivateKey, SIGNATURE_TRANSFORMATION);
-                System.out.println("Signature has " + signature.length + " bits");
-                System.out.println("Signature (visualised as base64 String): " + Base64.getEncoder().encodeToString(signature));
-
-                // ========== Concatenate signature and message ==========
-                outputStream.reset();
-                ByteBuffer byteBuffer = ByteBuffer.allocate(4);
-                byteBuffer.putInt(signature.length);
-                outputStream.write(byteBuffer.array());
-                outputStream.write(signature);
-
-                outputStream.write(messageContents);
-
-                byte[] concatenatedSignatureAndMessage = outputStream.toByteArray();
-                System.out.println("Concatenated signature and message (Base64): " + Base64.getEncoder().encodeToString(concatenatedSignatureAndMessage));
-                System.out.println("Before zipping length: " + concatenatedSignatureAndMessage.length);
-                byte[] zippedMessage = ZIP.compress(concatenatedSignatureAndMessage);
-                System.out.println("After zipping length: " + zippedMessage.length);
-                System.out.println("Zipped message (Base64): " + Base64.getEncoder().encodeToString(zippedMessage));
-
-                byte[] encryptedMessage = AES.encrypt(zippedMessage, AESKey, AES_TRANSFORMATION, nonce);
-                System.out.println("Encrypted message (Base64): " + Base64.getEncoder().encodeToString(encryptedMessage));
-
-                // ========== Final message construction ==========
-                outputStream.reset();
-
-                outputStream.write(encryptedKey);
-                outputStream.write(nonce);
-                outputStream.write(encryptedMessage);
-                byte[] output = outputStream.toByteArray();
-
-                clientSession.sendMessage(output);
-
-                Thread receiveThread = new Thread() {
-                    public void run() {
-                        while (true) {
-                            try {
-                                byte[][] messages = clientSession.fetchMessages(AESKey, serverPublicKey, usedNonces);
-                                for (byte[] message : messages) {
-                                    if (message != null) {
-                                        receiveText.setText(receiveText.getText() + "\n" + getTime() + " Server: " + new String(message, "UTF8"));
-                                    }
-                                }
-                                sleep(SLEEP_TIME);
-                            } catch (IOException | InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                };
-
-                receiveThread.start();
-                sendButton.setEnabled(true);
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        }
     }
 
     //For defining what happens when you resize the window
