@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.message.service.encrypted</groupId>
-    <artifactId>EncryptedMessageService</artifactId>
+    <artifactId>NonUsableJar</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <build>
@@ -19,6 +19,50 @@
                     <source>8</source>
                     <target>8</target>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.5.5</version>
+                <executions>
+                    <execution>
+                        <id>build-a</id>
+                        <configuration>
+                            <useProjectArtifact>false</useProjectArtifact>
+                            <archive>
+                                <manifest>
+                                    <mainClass>session.ClientUI</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>ClientEncryptedChat</finalName>
+                        </configuration>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>build-\b</id>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>session.ServerUI</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>ServerEncryptedChat</finalName>
+                        </configuration>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
