@@ -7,9 +7,22 @@
   - Thandile Xiphu
   - William Lumala
  
+### Requirements
+  - Java 8
+  - Maven *(if building project)*
+
+### Running this project
+Pre compiled client and server jars have been made available and are at the root directory, they can be run as follows:
+  - Execute the jars from terminal as debug messages are printed to standard output:
+    - ```java -jar ClientEncryptedChat-jar-with-dependencies.jar```
+    - ```java -jar ServerEncryptedChat-jar-with-dependencies.jar```
+  - Ensure the server is listening at the desired IP then use the client to connect to the desired IP
+
 ### Building this project
 This project uses maven to manage dependencies and building. <br>
 Run the following from the root of this project to compile and package the jars for this project:
   - ```mvn clean compile```
-  - Move the two jars created outside target to the root directory
-  - Execute the jars from terminal as debug messages are printed to standard output: ```java -jar ClientEncryptedChat-jar-with-dependencies.jar``` / ```java -jar ServerEncryptedChat-jar-with-dependencies.jar```
+  - Move the two jars created outside target to the root directory *(as it currently relies on some files that are set with relative paths from the root of this project)*
+  - Execute the jars from terminal as debug messages are printed to standard output:
+    - ```java -jar ClientEncryptedChat-jar-with-dependencies.jar```
+    - ```java -jar ServerEncryptedChat-jar-with-dependencies.jar```
