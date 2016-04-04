@@ -43,6 +43,9 @@ public class STORE
             e.printStackTrace();
         }
 
+        if (keyID < 0)
+            keyID = keyID * -1;
+
         return keyID;
     }
 
