@@ -193,8 +193,16 @@ class Session {
     }
 
     private byte[] constructEncryptedMessage(byte[] message, byte[] nonce, Long senderRSAKey) throws IOException {
+        // ========== Timestamp ==========
+        long currentTime = System.currentTimeMillis();
+        System.out.println("Send time: " + currentTime);
+        ByteBuffer timestampByteBuffer = ByteBuffer.allocate(Long.BYTES);
+        timestampByteBuffer.putLong(0, currentTime);
+        byte[] currentTimeByteArray = timestampByteBuffer.array();
+
         // ========== Message contents ==========
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        outputStream.write(currentTimeByteArray);
         outputStream.write(message);
         byte[] messageContents = outputStream.toByteArray();
         System.out.println("Message contents (Base64): " + Base64.getEncoder().encodeToString(messageContents));
@@ -326,11 +334,10 @@ class Session {
         usedNonces.add(Base64.getEncoder().encodeToString(nonce));
 
         // ========== Message ==========
-        byte[] messageContents = Arrays.copyOfRange(messageSection, 0, messageSection.length);
-        System.out.println("Message: " + new String(messageContents, "UTF8"));
+        System.out.println("Message: " + new String(messageSection, "UTF8"));
         System.out.println();
 
-        return messageContents;
+        return messageSection;
     }
 
     public byte[] getNonce(int IVStartIndex, int IVEndIndex, byte[] receivedMessage, Set<String> usedNonces) {
@@ -367,14 +374,32 @@ class Session {
         byte[] signature = Arrays.copyOfRange(unzippedData, startIndex + 4, startIndex + 4 + signatureLength);
         System.out.println("Signature (Base64): " + Base64.getEncoder().encodeToString(signature));
 
-
+        // ========== Timestamp ==========
         byte[] messageSection = Arrays.copyOfRange(unzippedData, startIndex + 4 + signatureLength, unzippedData.length);
+
         if (!DigitalSignature.verifySignature(messageSection, signature, remotePublicKey, SIGNATURE_TRANSFORMATION)) {
             System.out.println("Signature does not match, ignoring message");
             return null;
         }
 
-        return messageSection;
+        byte[] timestamp = Arrays.copyOfRange(messageSection, 0, Long.BYTES);
+        ByteBuffer senderPublicKeyID = ByteBuffer.allocate(Long.BYTES);
+        senderPublicKeyID.put(timestamp, 0, Long.BYTES);
+        senderPublicKeyID.flip();
+        long sendTime = senderPublicKeyID.getLong();
+        long currentTime = System.currentTimeMillis();
+        System.out.println("Send time: " + sendTime);
+        System.out.println("Current time: " + currentTime);
+
+        // Any message older than 30 minutes is dropped
+        if(currentTime - sendTime > 1800000) {
+            System.out.println("Received a message older than 30 minutes, dropping");
+            return null;
+        }
+
+        byte[] message = Arrays.copyOfRange(messageSection, Long.BYTES, messageSection.length);
+
+        return message;
     }
 
     public void setLocalPublicKey(RSAPublicKey publicKey) {
