@@ -11,6 +11,9 @@
   - Java 8
   - Maven *(if building project)*
 
+### Important Notice
+The jar needs to be called from the root directory of the project as it references files within the project using a relative path.
+
 ### Running this project
 Pre compiled client and server jars have been made available and are at the root directory, they can be run as follows:
   - Execute the jars from terminal as debug messages are printed to standard output:
